@@ -1,0 +1,67 @@
+---
+import { languages } from '~/i18n/ui';
+
+export interface Props {
+  currentLang: keyof typeof languages;
+  currentPath: string;
+}
+
+const { currentLang, currentPath } = Astro.props;
+
+// Remove language prefix from path if it exists
+const getPathWithoutLang = (path: string) => {
+  const pathSegments = path.split('/').filter(Boolean);
+  if (pathSegments[0] && pathSegments[0] in languages) {
+    const remainingPath = pathSegments.slice(1).join('/');
+    return remainingPath ? '/' + remainingPath : '';
+  }
+  return path === '/' ? '' : path;
+};
+
+const cleanPath = getPathWithoutLang(currentPath);
+---
+
+<div class="flex items-center space-x-2">
+  {Object.entries(languages).map(([lang, label]) => {
+    const targetUrl = lang === 'en' 
+      ? (cleanPath || '/') 
+      : (cleanPath ? `/pl${cleanPath}` : '/pl');
+    
+    return (
+      <a
+        href={targetUrl}
+        class={`px-2 py-1 text-sm rounded transition-colors ${
+          currentLang === lang
+            ? 'bg-primary text-white'
+            : 'text-gray-600 hover:text-primary dark:text-gray-300 dark:hover:text-primary'
+        }`}
+        aria-label={`Switch to ${label}`}
+        data-language={lang}
+      >
+        {lang.toUpperCase()}
+      </a>
+    );
+  })}
+</div>
+
+<script>
+  // Save language preference when user manually switches
+  document.addEventListener('DOMContentLoaded', () => {
+    const languageLinks = document.querySelectorAll('[data-language]');
+    
+    languageLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        const target = e.target as HTMLAnchorElement;
+        const selectedLanguage = target.dataset.language;
+        
+        if (selectedLanguage) {
+          // Set cookie to remember user's manual choice
+          document.cookie = `preferred-language=${selectedLanguage}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+          
+          // Set session flag to prevent auto-detection
+          sessionStorage.setItem('manual-language-choice', 'true');
+        }
+      });
+    });
+  });
+</script>

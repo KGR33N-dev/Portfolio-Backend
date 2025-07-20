@@ -1,23 +1,54 @@
 ---
 import Layout from '~/layouts/PageLayout.astro';
+import LanguageSwitcher from '~/components/LanguageSwitcher.astro';
+import LanguageNotification from '~/components/LanguageNotification.astro';
+
 import HeroText from '~/components/widgets/HeroText.astro';
 import ContactUs from '~/components/widgets/Contact.astro';
 import Features2 from '~/components/widgets/Features2.astro';
+import Header from '~/components/widgets/Header.astro';
 
 const metadata = {
-  title: 'Contact',
+  title: 'Contact - Krzysztof Głuchowski',
 };
 ---
 
 <Layout metadata={metadata}>
+  <LanguageNotification />
+  <Fragment slot="announcement"></Fragment>
+  <Fragment slot="header">
+    <Header
+      links={[
+        { text: 'Home', href: '/' },
+        { text: 'About', href: '/#about' },
+        { text: 'Resume', href: '/#resume' },
+        { text: 'Portfolio', href: '/#porfolio' },
+        { text: 'Blog', href: '/#blog' },
+        { text: 'Github', href: 'https://github.com/KGR33N-dev' },
+      ]}
+      actions={[
+        {
+          text: 'Hire me',
+          href: '/contact#form',
+        },
+      ]}
+      isSticky
+      showToggleTheme
+    >
+      <Fragment slot="extra">
+        <LanguageSwitcher currentLang="en" currentPath="/contact" />
+      </Fragment>
+    </Header>
+  </Fragment>
+
   <!-- HeroText Widget ******************* -->
 
   <HeroText tagline="Contact" title="Let's Connect!" />
 
   <ContactUs
     id="form"
-    title="Drop us a message today!"
-    subtitle="For quicker answers, explore our FAQs section. You may find the solution you're looking  for right there! If not, our support team is delighted to help you."
+    title="Drop me a message today!"
+    subtitle="For quicker answers, explore my portfolio and projects. You may find the information you're looking for right there! If not, I'm delighted to help you directly."
     inputs={[
       {
         type: 'text',
@@ -37,43 +68,24 @@ const metadata = {
       label:
         'By submitting this contact form, you acknowledge and agree to the collection of your personal information.',
     }}
-    description="Our support team typically responds within 24 business hours."
+    description="I typically respond within 24 business hours."
   />
 
   <!-- Features2 Widget ************** -->
 
   <Features2
-    title="We are here to help!"
+    title="I'm here to help!"
     items={[
       {
-        title: 'General support',
-        description: `Chat with us for inquiries related to account management, website navigation, payment issues, accessing purchased templates or general questions about the website's functionality.`,
+        title: 'General inquiries',
+        description: `Contact me for questions about my experience, availability for projects, collaboration opportunities, or general questions about my work and expertise.`,
       },
       {
-        title: 'Contact sales',
+        title: 'Technical consultation',
         description:
-          'Chat with us for questions about purchases, customization options, licensing for commercial use, inquiries about specific template, etc.',
-      },
-      {
-        title: 'Technical support',
-        description:
-          'Chat with us when facing issues like template installation, problems editing difficulties, compatibility issues with software or download errors, or other technical challenges related to using the templates.',
-      },
-      {
-        title: 'Phone',
-        description: '+1 (234) 567-890',
-        icon: 'tabler:headset',
-      },
-      {
-        title: 'Email',
-        description: 'contact@support.com',
-        icon: 'tabler:mail',
-      },
-      {
-        title: 'Location',
-        description: '1234 Lorem Ipsum St, 12345, Miami, EEUU',
-        icon: 'tabler:map-pin',
+          'Reach out for questions about Python development, VR applications, AI implementation, biotechnology solutions, or technical guidance for your projects.',
       },
     ]}
   />
+</Layout>
 </Layout>
