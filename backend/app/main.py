@@ -16,14 +16,21 @@ app = FastAPI(
     redoc_url="/api/redoc"
 )
 
-# CORS Configuration
-origins = config('CORS_ORIGINS', default='http://localhost:4321').split(',')
+# CORS Configuration - Development
+origins = [
+    "http://localhost:4321",
+    "http://localhost:4322", 
+    "http://localhost:3000",
+    "https://localhost:4321",
+    "https://localhost:4322"
+]
+print(f"🔧 CORS Origins: {origins}")  # Debug
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 

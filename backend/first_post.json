@@ -1,0 +1,9 @@
+{
+  "title": "Plan działania i cele mojego portfolio",
+  "slug": "plan-dzialania-i-cele-portfolio", 
+  "content": "# Witaj w moim portfolio!\n\nTo jest pierwszy post na moim blogu. Planuję rozbudowę tego projektu o:\n\n- Backend FastAPI z bazą danych\n- System postów blogowych\n- Integrację z projektami GameDev\n- System głosowań i ankiet\n- Autoryzację użytkowników\n\n## Technologie\n\n- **Frontend**: Astro + Tailwind CSS\n- **Backend**: FastAPI + SQLAlchemy\n- **Baza danych**: PostgreSQL (obecnie SQLite do testów)\n\n## Cele długofalowe\n\n- Połączenie z projektami GameDev (np. game jams)\n- Ankiety głosujące (np. na nowe gry)\n- Rankingi użytkowników\n- Komunikacja ze społecznością\n\nTo dopiero początek - więcej postów już wkrótce! 🚀",
+  "excerpt": "Pierwszy post opisujący plany rozwoju portfolio i blog",
+  "language": "pl",
+  "category": "general",
+  "tags": ["portfolio", "fastapi", "astro", "gamedev"]
+}

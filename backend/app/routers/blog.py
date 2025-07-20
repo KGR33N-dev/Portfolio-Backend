@@ -22,7 +22,7 @@ async def get_blog_posts(
     db: Session = Depends(get_db),
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=100),
-    language: Optional[str] = Query(None, regex="^(pl|en)$"),
+    language: Optional[str] = Query(None, pattern="^(pl|en)$"),
     category: Optional[str] = Query(None),
     published_only: bool = Query(True)
 ):

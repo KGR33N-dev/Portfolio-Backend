@@ -7,6 +7,10 @@ export const headerData = {
       href: getPermalink('/'),
     },
     {
+      text: 'Blog',
+      href: getPermalink('/blog'),
+    },
+    {
       text: 'Pages',
       links: [
         {

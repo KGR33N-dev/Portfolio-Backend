@@ -10,7 +10,7 @@ class BlogPostBase(BaseModel):
     author: str = "KGR33N"
     meta_title: Optional[str] = None
     meta_description: Optional[str] = None
-    language: str = Field(default="pl", regex="^(pl|en)$")
+    language: str = Field(default="pl", pattern="^(pl|en)$")
     category: str = "general"
 
 class BlogPostCreate(BlogPostBase):
@@ -57,7 +57,7 @@ class Tag(TagCreate):
 # User Schemas (for future authentication)
 class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
-    email: str = Field(..., regex=r'^[\w\.-]+@[\w\.-]+\.\w+$')
+    email: str = Field(..., pattern=r'^[\w\.-]+@[\w\.-]+\.\w+$')
     full_name: Optional[str] = None
     bio: Optional[str] = None
 

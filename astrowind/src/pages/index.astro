@@ -10,7 +10,6 @@ import CallToAction from '~/components/widgets/CallToAction.astro';
 import Features3 from '~/components/widgets/Features3.astro';
 import Testimonials from '~/components/widgets/Testimonials.astro';
 import Steps from '~/components/widgets/Steps.astro';
-import BlogLatestPosts from '~/components/widgets/BlogLatestPosts.astro';
 import { getPermalink } from '~/utils/permalinks';
 
 const metadata = {
@@ -28,7 +27,8 @@ const metadata = {
         { text: 'About', href: '#about' },
         { text: 'Resume', href: '#resume' },
         { text: 'Porfolio', href: '#porfolio' },
-        { text: 'Blog', href: '#blog' },
+        { text: 'Services', href: getPermalink('/services') },
+        { text: 'Contact', href: getPermalink('/contact') },
         { text: 'Github', href: 'https://github.com/KGR33N-dev' },
       ]}
       actions={[
@@ -343,15 +343,4 @@ const metadata = {
     ]}
   />
 
-  <!-- BlogLatestPost Widget **************** -->
-
-  <BlogLatestPosts
-    id="blog"
-    title="Explore my technical insights and development journey"
-    information={`Dive into my world of Python development, VR gaming, AI integration, and biotechnology applications. Find practical insights, project breakdowns, and lessons learned from real-world development experiences.`}
-  >
-    <Fragment slot="bg">
-      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
-    </Fragment>
-  </BlogLatestPosts>
 </Layout>
