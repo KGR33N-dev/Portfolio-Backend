@@ -8,7 +8,6 @@ import Hero from '~/components/widgets/Hero.astro';
 import Content from '~/components/widgets/Content.astro';
 import Features3 from '~/components/widgets/Features3.astro';
 import Steps from '~/components/widgets/Steps.astro';
-import { getBlogPermalink } from '~/utils/permalinks';
 
 const metadata = {
   title: 'Krzysztof Głuchowski - Programista Python',
@@ -23,14 +22,13 @@ const metadata = {
         { text: 'O mnie', href: '/pl#about' },
         { text: 'CV', href: '/pl#resume' },
         { text: 'Portfolio', href: '/pl#porfolio' },
-        { text: 'Blog', href: getBlogPermalink()},
-        { text: 'Github', href: 'https://github.com/KGR33N-dev' },
+        { text: 'Blog', href: 'pl/blog'},
       ]}
       isSticky
       showToggleTheme
     >
       <Fragment slot="extra">
-        <LanguageSwitcher currentLang="pl" currentPath="/pl" />
+        <LanguageSwitcher />
       </Fragment>
     </Header>
   </Fragment>
@@ -41,7 +39,7 @@ const metadata = {
     id="hero"
     title="Krzysztof Głuchowski"
     tagline="Programista Python i Student Informatyki"
-    actions={[{ variant: 'primary', text: 'Zatrudnij mnie', href: '/pl/contact#form' }]}
+    actions={[{ variant: 'primary', text: 'Kontakt', href: '/pl/contact#form' }]}
   >
     <Fragment slot="subtitle">
       Cześć! Jestem Krzysztof Głuchowski, pasjonujący się programista Python i student informatyki specjalizujący się w AI. Mam profesjonalne doświadczenie w budowaniu skalowalnych aplikacji, rozwiązań VR i innowacyjnych systemów biotechnologicznych.
@@ -255,10 +253,7 @@ const metadata = {
         description: `Silnik Unity, C#, Rozwój VR, Fizyka Gier, Systemy Audio, UI/UX dla VR. Uczestniczyłem w przepływach pracy współpracy programistycznej i dostarczałem niezależne rozwiązania dla renomowanych klientów.`,
       },
     ]}
-    image={{
-      src: 'https://images.unsplash.com/photo-1592478411213-6153e4ebc696?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=774&q=80',
-      alt: 'Rozwój Gier VR',
-    }}
+
     callToAction={{
       target: '_blank',
       text: 'Zobacz na LinkedIn',

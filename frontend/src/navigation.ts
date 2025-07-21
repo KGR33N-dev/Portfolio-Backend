@@ -1,30 +1,45 @@
-import { getPermalink, getBlogPermalink, getAsset } from './utils/permalinks';
+import { useTranslations } from './i18n/utils';
+import { languages } from './i18n/ui';
 
-export const headerData = {
-  links: [
-    {
-      text: 'Portfolio',
-      href: getPermalink('/'),
-    },
-    {
-      text: 'Blog',
-      href: getBlogPermalink(),
-    },
-  ],
+type SupportedLanguage = keyof typeof languages;
+
+// Function to get navigation data based on language
+export const getHeaderData = (lang: SupportedLanguage) => {
+  const t = useTranslations(lang);
+  
+  return {
+    links: [
+      {
+        text: t('nav.portfolio'),
+        href: `/${lang}`,
+      },
+      {
+        text: t('nav.blog'),
+        href: `/${lang}/blog`,
+      },
+    ],
+  };
 };
 
-export const footerData = {
-  links: [
-  ],
-  secondaryLinks: [
-    { text: 'Terms', href: getPermalink('/terms') },
-    { text: 'Privacy Policy', href: getPermalink('/privacy') },
-  ],
-  socialLinks: [
-    { ariaLabel: 'X', icon: 'tabler:brand-x', href: '#' },
-    { ariaLabel: 'Instagram', icon: 'tabler:brand-instagram', href: '#' },
-    { ariaLabel: 'Facebook', icon: 'tabler:brand-facebook', href: 'https://www.facebook.com/profile.php?id=100021802540751' },
-    { ariaLabel: 'RSS', icon: 'tabler:rss', href: getAsset('/rss.xml') },
-    { ariaLabel: 'Github', icon: 'tabler:brand-github', href: 'https://github.com/kgr33n-dev' },
-  ],
+export const getFooterData = (lang: SupportedLanguage) => {
+  const t = useTranslations(lang);
+  
+  return {
+    links: [
+    ],
+    secondaryLinks: [
+      { 
+        text: t('footer.terms'), 
+        href: `/${lang}/terms`
+      },
+      { 
+        text: t('footer.privacy'), 
+        href: `/${lang}/privacy`
+      },
+    ],
+    socialLinks: [
+      { ariaLabel: 'X', icon: 'tabler:brand-x', href: '#' },
+      { ariaLabel: 'Github', icon: 'tabler:brand-github', href: 'https://github.com/kgr33n-dev' },
+    ],
+  };
 };

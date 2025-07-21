@@ -1,31 +1,31 @@
 ---
 import { languages } from '~/i18n/ui';
+import { getLangFromUrl } from '~/i18n/utils';
 
-export interface Props {
-  currentLang: keyof typeof languages;
-  currentPath: string;
-}
+// Get current language and path automatically
+const currentLang = getLangFromUrl(Astro.url);
+const currentPath = Astro.url.pathname;
 
-const { currentLang, currentPath } = Astro.props;
-
-// Remove language prefix from path if it exists
-const getPathWithoutLang = (path: string) => {
-  const pathSegments = path.split('/').filter(Boolean);
-  if (pathSegments[0] && pathSegments[0] in languages) {
-    const remainingPath = pathSegments.slice(1).join('/');
-    return remainingPath ? '/' + remainingPath : '';
+// Function to redirect to the same path but with different language
+function getRedirectPath(currentPath: string, targetLang: string): string {
+  // Remove domain if present (e.g., "kgr33n.com/en/blog" -> "/en/blog")
+  const path = currentPath.replace(/^https?:\/\/[^/]+/, '');
+  
+  // Split path into segments
+  const segments = path.split('/').filter(Boolean);
+  // If no segments (home page), return just the language
+  if (segments.length === 0) {
+    return `/${targetLang}`;
   }
-  return path === '/' ? '' : path;
-};
-
-const cleanPath = getPathWithoutLang(currentPath);
+  // Replace first segment (language) with target language
+  segments[0] = targetLang;
+  return `/${segments.join('/')}`;
+}
 ---
 
 <div class="flex items-center space-x-2">
   {Object.entries(languages).map(([lang, label]) => {
-    const targetUrl = lang === 'en' 
-      ? (cleanPath || '/') 
-      : (cleanPath ? `/pl${cleanPath}` : '/pl');
+    const targetUrl = getRedirectPath(currentPath, lang as keyof typeof languages);
     
     return (
       <a
@@ -43,25 +43,3 @@ const cleanPath = getPathWithoutLang(currentPath);
     );
   })}
 </div>
-
-<script>
-  // Save language preference when user manually switches
-  document.addEventListener('DOMContentLoaded', () => {
-    const languageLinks = document.querySelectorAll('[data-language]');
-    
-    languageLinks.forEach(link => {
-      link.addEventListener('click', (e) => {
-        const target = e.target as HTMLAnchorElement;
-        const selectedLanguage = target.dataset.language;
-        
-        if (selectedLanguage) {
-          // Set cookie to remember user's manual choice
-          document.cookie = `preferred-language=${selectedLanguage}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
-          
-          // Set session flag to prevent auto-detection
-          sessionStorage.setItem('manual-language-choice', 'true');
-        }
-      });
-    });
-  });
-</script>

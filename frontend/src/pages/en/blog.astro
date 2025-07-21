@@ -3,7 +3,7 @@ import Layout from '~/layouts/PageLayout.astro';
 
 const metadata = {
   title: 'Blog - KGR33N Portfolio',
-  description: 'Techniczny blog o programowaniu, GameDev, FastAPI, Astro i projektach w Pythonie.',
+  description: 'Technical blog about programming, GameDev, FastAPI, Astro and Python projects.',
   robots: {
     index: true,
     follow: true,
@@ -11,7 +11,7 @@ const metadata = {
   openGraph: {
     type: 'website',
     title: 'Blog - KGR33N Portfolio',
-    description: 'Artykuły techniczne o Pythonie, GameDev, web developmencie i projektowaniu backendu.',
+    description: 'Tech articles about Python, GameDev, web development and backend design.',
   },
 };
 ---
@@ -23,14 +23,14 @@ const metadata = {
         Blog
       </h1>
       <p class="text-xl text-muted max-w-3xl mx-auto">
-        Artykuły o programowaniu backendu, Pythonie, FastAPI, Astro i GameDev. Treści techniczne i przeglądy projektów.
+        Articles about backend development, Python, FastAPI, Astro and GameDev. Technical content and project breakdowns.
       </p>
     </div>
 
     <div id="loading" class="flex justify-center items-center py-16">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       <span class="ml-3 text-lg text-gray-600 dark:text-gray-300">
-        Ładowanie postów...
+        Loading posts...
       </span>
     </div>
 
@@ -40,9 +40,9 @@ const metadata = {
           <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
         </svg>
       </div>
-      <p class="text-red-800 dark:text-red-200 font-medium mb-4">Błąd podczas ładowania postów</p>
+      <p class="text-red-800 dark:text-red-200 font-medium mb-4">Error while loading blog posts</p>
       <button id="retry" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors">
-        Ponów próbę
+        Retry
       </button>
     </div>
 

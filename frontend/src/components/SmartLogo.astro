@@ -1,52 +1,13 @@
 ---
 import Logo from '~/components/Logo.astro';
+import { getLangFromUrl } from '~/i18n/utils';
+
+// Set home URL with current language prefix
+const homeUrl = `/${getLangFromUrl(Astro.url)}`;
 ---
 
-<a id="smart-home-link" class="flex items-center" href="/">
+<a id="smart-home-link" class="flex items-center" href={homeUrl} aria-label="Home">
   <Logo />
 </a>
 
-<script>
-  // Smart home link that respects language preference
-  document.addEventListener('DOMContentLoaded', () => {
-    const homeLink = document.getElementById('smart-home-link');
-    if (!homeLink) return;
 
-    homeLink.addEventListener('click', (e) => {
-      e.preventDefault();
-      
-      // Check for saved language preference
-      const savedLanguage = getCookie('preferred-language');
-      
-      if (savedLanguage === 'pl') {
-        window.location.href = '/pl';
-      } else {
-        window.location.href = '/';
-      }
-    });
-
-    // Update href attribute based on current preference
-    const updateHref = () => {
-      const savedLanguage = getCookie('preferred-language');
-      if (savedLanguage === 'pl') {
-        homeLink.setAttribute('href', '/pl');
-      } else {
-        homeLink.setAttribute('href', '/');
-      }
-    };
-
-    // Update on load
-    updateHref();
-
-    // Update when language changes (listen for custom events)
-    document.addEventListener('languageChanged', updateHref);
-  });
-
-  // Helper function to get cookie
-  function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
-  }
-</script>

@@ -3,6 +3,8 @@ export const languages = {
   pl: 'Polski',
 };
 
+export const showDefaultLang = false;
+
 export const defaultLang = 'en';
 
 export const ui = {
@@ -30,7 +32,15 @@ export const ui = {
     'cta.subtitle': 'Ready to bring your next Python, VR, or AI project to life?',
     'cta.contact': 'Contact me',
     'blog.title': 'Explore my technical insights and development journey',
-    'blog.subtitle': 'Dive into my world of Python development, VR gaming, AI integration, and biotechnology applications. Find practical insights, project breakdowns, and lessons learned from real-world development experiences.'
+    'blog.subtitle': 'Dive into my world of Python development, VR gaming, AI integration, and biotechnology applications. Find practical insights, project breakdowns, and lessons learned from real-world development experiences.',
+    'footer.terms': 'Terms of Use',
+    'footer.privacy': 'Privacy Policy',
+    'footer.contact': 'Contact',
+    'footer.social': 'Social Media',
+    'footer.copyright': 'Copyright',
+    'footer.allRightsReserved': 'All rights reserved',
+    'footer.poweredBy': 'Powered by KGR33N',
+    'footer.language': 'Language',
   },
   pl: {
     'nav.home': 'Strona główna',
@@ -56,18 +66,14 @@ export const ui = {
     'cta.subtitle': 'Gotowy, aby tchnąć życie w swój następny projekt Python, VR lub AI?',
     'cta.contact': 'Skontaktuj się ze mną',
     'blog.title': 'Poznaj moje techniczne spostrzeżenia i podróż programistyczną',
-    'blog.subtitle': 'Zanurz się w moim świecie programowania Python, gier VR, integracji AI i aplikacji biotechnologicznych. Znajdź praktyczne spostrzeżenia, analizy projektów i lekcje wyciągnięte z rzeczywistych doświadczeń programistycznych.'
+    'blog.subtitle': 'Zanurz się w moim świecie programowania Python, gier VR, integracji AI i aplikacji biotechnologicznych. Znajdź praktyczne spostrzeżenia, analizy projektów i lekcje wyciągnięte z rzeczywistych doświadczeń programistycznych.',
+    'footer.terms': 'Warunki korzystania',
+    'footer.privacy': 'Polityka prywatności',
+    'footer.contact': 'Kontakt',
+    'footer.social': 'Media społecznościowe',
+    'footer.copyright': 'Prawa autorskie',
+    'footer.allRightsReserved': 'Wszystkie prawa zastrzeżone',
+    'footer.poweredBy': 'Stworzone z pasją przez KGR33N',
+    'footer.language': 'Język',
   },
 } as const;
-
-export function getLangFromUrl(url: URL) {
-  const [, lang] = url.pathname.split('/');
-  if (lang in ui) return lang as keyof typeof ui;
-  return defaultLang;
-}
-
-export function useTranslations(lang: keyof typeof ui) {
-  return function t(key: keyof typeof ui[typeof defaultLang]) {
-    return ui[lang][key] || ui[defaultLang][key];
-  }
-}
