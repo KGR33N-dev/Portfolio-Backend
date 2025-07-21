@@ -2,15 +2,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from decouple import config
+import os
+from dotenv import load_dotenv
 
+load_dotenv()  # Load environment variables from .env file
 # Database URL from environment
-DATABASE_URL = config('DATABASE_URL', default='sqlite:///./portfolio.db')
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Create SQLAlchemy engine
-# For SQLite, we need check_same_thread=False to work with FastAPI
+# PostgreSQL configuration
 engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+    DATABASE_URL, echo=True
 )
 
 # Create SessionLocal class

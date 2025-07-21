@@ -22,3 +22,28 @@ pnpm-debug.log*
 pnpm-lock.yaml
 
 .astro
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.log
+
+# Env
+.env
+.env.*
+venv/
+.venv/
+
+# Alembic caches
+alembic/versions/__pycache__/
+alembic/__pycache__/
+
+# VSCode
+.vscode/
+
+# Mac/Linux system
+.DS_Store
