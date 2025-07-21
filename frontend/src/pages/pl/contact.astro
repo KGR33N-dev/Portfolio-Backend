@@ -5,7 +5,6 @@ import LanguageNotification from '~/components/LanguageNotification.astro';
 
 import HeroText from '~/components/widgets/HeroText.astro';
 import ContactUs from '~/components/widgets/Contact.astro';
-import Features2 from '~/components/widgets/Features2.astro';
 import Header from '~/components/widgets/Header.astro';
 
 const metadata = {
@@ -15,11 +14,9 @@ const metadata = {
 
 <Layout metadata={metadata}>
   <LanguageNotification />
-  <Fragment slot="announcement"></Fragment>
   <Fragment slot="header">
     <Header
       links={[
-        { text: 'Strona główna', href: '/pl' },
         { text: 'O mnie', href: '/pl#about' },
         { text: 'CV', href: '/pl#resume' },
         { text: 'Portfolio', href: '/pl#porfolio' },
@@ -68,22 +65,7 @@ const metadata = {
       label:
         'Przesyłając ten formularz kontaktowy, potwierdzasz i wyrażasz zgodę na zbieranie Twoich danych osobowych.',
     }}
-    description="Nasz zespół wsparcia zazwyczaj odpowiada w ciągu 24 godzin roboczych."
+    description="Zazwyczaj odpowiadam w ciągu 24 godzin roboczych."
   />
 
-  <!-- Features2 Widget ************** -->
-
-  <Features2
-    title="Jesteśmy tutaj, aby pomóc!"
-    items={[
-      {
-        title: 'Wsparcie ogólne',
-        description: `Napisz do mnie w sprawach związanych z zarządzaniem kontem, nawigacją po stronie, problemami z płatnościami, dostępem do zakupionych szablonów lub ogólnymi pytaniami o funkcjonalność strony.`,
-      },
-      {
-        title: 'Wsparcie techniczne',
-        description: `Skontaktuj się ze mną w przypadku problemów technicznych, błędów, problemów z wydajnością lub pomocy w rozwiązywaniu problemów związanych z użytkowaniem platformy.`,
-      },
-    ]}
-  />
 </Layout>

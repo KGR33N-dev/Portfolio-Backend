@@ -8,10 +8,8 @@ import Hero from '~/components/widgets/Hero.astro';
 import Content from '~/components/widgets/Content.astro';
 import CallToAction from '~/components/widgets/CallToAction.astro';
 import Features3 from '~/components/widgets/Features3.astro';
-import Testimonials from '~/components/widgets/Testimonials.astro';
 import Steps from '~/components/widgets/Steps.astro';
-import { getPermalink } from '~/utils/permalinks';
-
+import { getBlogPermalink } from '~/utils/permalinks';
 const metadata = {
   title: 'Krzysztof Głuchowski - Python Developer',
 };
@@ -19,23 +17,14 @@ const metadata = {
 
 <Layout metadata={metadata}>
   <LanguageNotification />
-  <Fragment slot="announcement"></Fragment>
   <Fragment slot="header">
     <Header
       links={[
-        { text: 'Home', href: '#' },
         { text: 'About', href: '#about' },
         { text: 'Resume', href: '#resume' },
         { text: 'Porfolio', href: '#porfolio' },
-        { text: 'Services', href: getPermalink('/services') },
-        { text: 'Contact', href: getPermalink('/contact') },
+        { text: 'Blog', href: getBlogPermalink() },
         { text: 'Github', href: 'https://github.com/KGR33N-dev' },
-      ]}
-      actions={[
-        {
-          text: 'Hire me',
-          href: '/contact#form',
-        },
       ]}
       isSticky
       showToggleTheme
@@ -328,19 +317,4 @@ const metadata = {
       <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
     </Fragment>
   </Content>
-
-  <!-- CallToAction Widget *********** -->
-
-  <CallToAction
-    title="Let's build something amazing together"
-    subtitle="Ready to bring your next Python, VR, or AI project to life?"
-    actions={[
-      {
-        variant: 'primary',
-        text: 'Contact me',
-        href: 'mailto:gluchowski.job@gmail.com',
-      },
-    ]}
-  />
-
 </Layout>

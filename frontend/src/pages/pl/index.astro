@@ -6,11 +6,9 @@ import LanguageNotification from '~/components/LanguageNotification.astro';
 import Header from '~/components/widgets/Header.astro';
 import Hero from '~/components/widgets/Hero.astro';
 import Content from '~/components/widgets/Content.astro';
-import CallToAction from '~/components/widgets/CallToAction.astro';
 import Features3 from '~/components/widgets/Features3.astro';
-import Testimonials from '~/components/widgets/Testimonials.astro';
 import Steps from '~/components/widgets/Steps.astro';
-import { getPermalink } from '~/utils/permalinks';
+import { getBlogPermalink } from '~/utils/permalinks';
 
 const metadata = {
   title: 'Krzysztof Głuchowski - Programista Python',
@@ -19,21 +17,14 @@ const metadata = {
 
 <Layout metadata={metadata}>
   <LanguageNotification />
-  <Fragment slot="announcement"></Fragment>
   <Fragment slot="header">
     <Header
       links={[
-        { text: 'Strona główna', href: '/pl' },
         { text: 'O mnie', href: '/pl#about' },
         { text: 'CV', href: '/pl#resume' },
         { text: 'Portfolio', href: '/pl#porfolio' },
+        { text: 'Blog', href: getBlogPermalink()},
         { text: 'Github', href: 'https://github.com/KGR33N-dev' },
-      ]}
-      actions={[
-        {
-          text: 'Zatrudnij mnie',
-          href: '/pl/contact#form',
-        },
       ]}
       isSticky
       showToggleTheme
@@ -322,18 +313,4 @@ const metadata = {
       <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
     </Fragment>
   </Content>
-
-  <!-- CallToAction Widget *********** -->
-
-  <CallToAction
-    title="Zbudujmy razem coś niesamowitego"
-    subtitle="Gotowy, aby tchnąć życie w swój następny projekt Python, VR lub AI?"
-    actions={[
-      {
-        variant: 'primary',
-        text: 'Skontaktuj się ze mną',
-        href: 'mailto:gluchowski.job@gmail.com',
-      },
-    ]}
-  />
 </Layout>

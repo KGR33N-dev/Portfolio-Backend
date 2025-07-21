@@ -1,17 +1,23 @@
-FROM node:lts AS base
+# Use Node.js 20 Alpine as base image
+FROM node:20-alpine
+
+# Set working directory
 WORKDIR /app
 
-FROM base AS deps
+# Copy package files
 COPY package*.json ./
-RUN npm install
 
-FROM base AS build
-COPY --from=deps /app/node_modules ./node_modules
+# Install ALL dependencies (including dev dependencies for build)
+RUN npm ci
+
+# Copy source code
 COPY . .
+
+# Build the application
 RUN npm run build
 
-FROM nginx:stable-alpine AS deploy
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
+# Expose port 4321 (Astro's default)
+EXPOSE 4321
 
-EXPOSE 8080
+# Start the application in development mode
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "4321"]
