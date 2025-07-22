@@ -1,5 +1,5 @@
 import { useTranslations } from './i18n/utils';
-import { languages } from './i18n/ui';
+import { languages } from './i18n';
 
 type SupportedLanguage = keyof typeof languages;
 
@@ -16,6 +16,10 @@ export const getHeaderData = (lang: SupportedLanguage) => {
       {
         text: t('nav.blog'),
         href: `/${lang}/blog`,
+      },
+      {
+        text: t('nav.contact'),
+        href: `/${lang}/contact`,
       },
     ],
   };
@@ -38,8 +42,7 @@ export const getFooterData = (lang: SupportedLanguage) => {
       },
     ],
     socialLinks: [
-      { ariaLabel: 'X', icon: 'tabler:brand-x', href: '#' },
-      { ariaLabel: 'Github', icon: 'tabler:brand-github', href: 'https://github.com/kgr33n-dev' },
+      { ariaLabel: 'X', icon: 'tabler:brand-x', href: 'https://x.com/KGR33N_' },
     ],
   };
 };

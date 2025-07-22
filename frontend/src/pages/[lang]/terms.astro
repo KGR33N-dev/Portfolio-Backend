@@ -1,0 +1,78 @@
+---
+import Layout from '~/layouts/PageLayout.astro';
+import { useTranslations } from '~/i18n/utils';
+import { languages } from '~/i18n';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map(lang => ({
+    params: { lang }
+  }));
+}
+
+const { lang } = Astro.params;
+const t = useTranslations(lang as keyof typeof languages);
+
+const metadata = { 
+  title: t('terms.title'),
+  description: t('terms.intro.content')
+};
+---
+
+<Layout metadata={metadata}>
+  <section class="px-4 py-16 sm:px-6 mx-auto lg:px-8 lg:py-20 max-w-4xl">
+    <article class="prose prose-lg dark:prose-invert max-w-4xl mx-auto">
+      <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold mb-4">{t('terms.title')}</h1>
+        <p class="text-muted italic">{t('terms.lastUpdated')}</p>
+      </div>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('terms.intro.title')}</h2>
+        <p class="text-default" set:html={t('terms.intro.content')} />
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('terms.definitions.title')}</h2>
+        <ul class="list-disc pl-6 space-y-2 text-default">
+          <li set:html={t('terms.definitions.website')} />
+          <li set:html={t('terms.definitions.user')} />
+          <li set:html={t('terms.definitions.author')} />
+        </ul>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('terms.usage.title')}</h2>
+        <ul class="list-disc pl-6 space-y-2 text-default">
+          <li>{t('terms.usage.purpose')}</li>
+          <li>{t('terms.usage.informational')}</li>
+          <li>{t('terms.usage.prohibited')}</li>
+        </ul>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('terms.responsibility.title')}</h2>
+        <p class="text-default">{t('terms.responsibility.content')}</p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('terms.intellectual.title')}</h2>
+        <p class="text-default">{t('terms.intellectual.content')}</p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('terms.userContent.title')}</h2>
+        <p class="text-default">{t('terms.userContent.content')}</p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('terms.changes.title')}</h2>
+        <p class="text-default">{t('terms.changes.content')}</p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('terms.contact.title')}</h2>
+        <p class="text-default" set:html={t('terms.contact.content')} />
+      </section>
+    </article>
+  </section>
+</Layout>

@@ -1,0 +1,105 @@
+---
+import { Icon } from 'astro-icon/components';
+import { useTranslations } from '../../i18n/utils';
+import { languages } from '../../i18n';
+
+export interface Props {
+  lang: keyof typeof languages;
+  variant?: 'header' | 'hero' | 'contact';
+  class?: string;
+}
+
+const { lang, variant = 'header', class: className = '' } = Astro.props;
+const t = useTranslations(lang);
+
+// Style variants
+const baseClasses = 'inline-flex items-center justify-center transition-all duration-200';
+const variants = {
+  header: 'text-sm px-3 py-2 text-muted hover:text-primary dark:text-gray-300 dark:hover:text-white',
+  hero: 'px-6 py-3 text-base font-semibold rounded-lg bg-primary text-white hover:bg-secondary dark:bg-blue-600 dark:hover:bg-blue-700',
+  contact: 'px-4 py-2 text-sm border border-primary text-primary hover:bg-primary hover:text-white dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-400 dark:hover:text-white rounded-md'
+};
+---
+
+{variant === 'header' && (
+  <div class="relative group">
+    <button class={`${baseClasses} ${variants[variant]} ${className}`} aria-label={t('nav.cv')}>
+      <Icon name="tabler:file-text" class="w-4 h-4 mr-1" />
+      {t('nav.cv')}
+      <Icon name="tabler:chevron-down" class="w-3 h-3 ml-1" />
+    </button>
+    
+    <!-- Dropdown menu -->
+    <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 border border-gray-200 dark:border-gray-700">
+      <div class="py-1">
+        <a
+          href="/cv/CV_Krzysztof_Gluchowski_EN.pdf"
+          download="CV_Krzysztof_Gluchowski_EN.pdf"
+          class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          <Icon name="tabler:download" class="w-4 h-4 mr-2" />
+          {t('nav.downloadCVEN')}
+        </a>
+        <a
+          href="/cv/CV_Krzysztof_Gluchowski_PL.pdf"
+          download="CV_Krzysztof_Gluchowski_PL.pdf"
+          class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          <Icon name="tabler:download" class="w-4 h-4 mr-2" />
+          {t('nav.downloadCVPL')}
+        </a>
+      </div>
+    </div>
+  </div>
+)}
+
+{variant === 'hero' && (
+  <div class="flex flex-col sm:flex-row gap-3 justify-center">
+    <a
+      href="/cv/CV_Krzysztof_Gluchowski_EN.pdf"
+      download="CV_Krzysztof_Gluchowski_EN.pdf"
+      class={`${baseClasses} ${variants[variant]} ${className}`}
+    >
+      <Icon name="tabler:download" class="w-5 h-5 mr-2" />
+      {t('nav.downloadCVEN')}
+    </a>
+    <a
+      href="/cv/CV_Krzysztof_Gluchowski_PL.pdf"
+      download="CV_Krzysztof_Gluchowski_PL.pdf"
+      class={`${baseClasses} ${variants[variant]} bg-gray-600 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 ${className}`}
+    >
+      <Icon name="tabler:download" class="w-5 h-5 mr-2" />
+      {t('nav.downloadCVPL')}
+    </a>
+  </div>
+)}
+
+{variant === 'contact' && (
+  <div class="flex flex-col sm:flex-row gap-2 justify-center mt-4">
+    <a
+      href="/cv/CV_Krzysztof_Gluchowski_EN.pdf"
+      download="CV_Krzysztof_Gluchowski_EN.pdf"
+      class={`${baseClasses} ${variants[variant]} ${className}`}
+    >
+      <Icon name="tabler:download" class="w-4 h-4 mr-2" />
+      {t('nav.downloadCVEN')}
+    </a>
+    <a
+      href="/cv/CV_Krzysztof_Gluchowski_PL.pdf"
+      download="CV_Krzysztof_Gluchowski_PL.pdf"
+      class={`${baseClasses} ${variants[variant]} ${className}`}
+    >
+      <Icon name="tabler:download" class="w-4 h-4 mr-2" />
+      {t('nav.downloadCVPL')}
+    </a>
+  </div>
+)}
+
+<style>
+  .group:hover .group-hover\:opacity-100 {
+    opacity: 1;
+  }
+  .group:hover .group-hover\:visible {
+    visibility: visible;
+  }
+</style>

@@ -1,14 +1,19 @@
 ---
 import Layout from '~/layouts/Layout.astro';
-import { getLangFromUrl, useTranslations } from '~/i18n/utils';
+import { useTranslations } from '~/i18n/utils';
+import { languages } from '~/i18n';
 
-// Detect language from URL
-const currentLang = getLangFromUrl(Astro.url);
-const t = useTranslations(currentLang);
+export function getStaticPaths() {
+  return Object.keys(languages).map(lang => ({
+    params: { lang }
+  }));
+}
 
-// Set metadata and home URL with current language prefix
+const { lang } = Astro.params;
+const t = useTranslations(lang as keyof typeof languages);
+
 const title = t('404.title');
-const homeUrl = `/${currentLang}`;
+const homeUrl = `/${lang}`;
 ---
 
 <Layout metadata={{ title }}>

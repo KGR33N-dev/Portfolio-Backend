@@ -1,0 +1,79 @@
+---
+import Layout from '~/layouts/PageLayout.astro';
+import { useTranslations } from '~/i18n/utils';
+import { languages } from '~/i18n';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map(lang => ({
+    params: { lang }
+  }));
+}
+
+const { lang } = Astro.params;
+const t = useTranslations(lang as keyof typeof languages);
+
+const metadata = { 
+  title: t('privacy.title'),
+  description: t('privacy.intro.content')
+};
+---
+
+<Layout metadata={metadata}>
+  <section class="px-4 py-16 sm:px-6 mx-auto lg:px-8 lg:py-20 max-w-4xl">
+    <article class="prose prose-lg dark:prose-invert max-w-4xl mx-auto">
+      <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold mb-4">{t('privacy.title')}</h1>
+        <p class="text-muted italic">{t('privacy.lastUpdated')}</p>
+      </div>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('privacy.intro.title')}</h2>
+        <p class="text-default" set:html={t('privacy.intro.content')} />
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('privacy.dataCollection.title')}</h2>
+        <ul class="list-disc pl-6 space-y-2 text-default">
+          <li set:html={t('privacy.dataCollection.basic')} />
+          <li set:html={t('privacy.dataCollection.technical')} />
+        </ul>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('privacy.dataUsage.title')}</h2>
+        <ul class="list-disc pl-6 space-y-2 text-default">
+          <li>{t('privacy.dataUsage.purpose')}</li>
+          <li>{t('privacy.dataUsage.noSelling')}</li>
+        </ul>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('privacy.dataStorage.title')}</h2>
+        <ul class="list-disc pl-6 space-y-2 text-default">
+          <li>{t('privacy.dataStorage.protection')}</li>
+          <li>{t('privacy.dataStorage.retention')}</li>
+        </ul>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('privacy.cookies.title')}</h2>
+        <p class="text-default">{t('privacy.cookies.content')}</p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('privacy.userRights.title')}</h2>
+        <p class="text-default" set:html={t('privacy.userRights.content')} />
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('privacy.policyChanges.title')}</h2>
+        <p class="text-default">{t('privacy.policyChanges.content')}</p>
+      </section>
+
+      <section class="mb-8">
+        <h2 class="text-2xl font-semibold mb-4 text-default">{t('privacy.contact.title')}</h2>
+        <p class="text-default" set:html={t('privacy.contact.content')} />
+      </section>
+    </article>
+  </section>
+</Layout>

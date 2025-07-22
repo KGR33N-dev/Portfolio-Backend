@@ -20,7 +20,7 @@ const footerData = getFooterData(lang);
 
 <Layout metadata={metadata}>
   <slot name="header">
-    <Header {...headerData} isSticky showRssFeed showToggleTheme showLanguageSwitcher />
+    <Header {...headerData} lang={lang} isSticky showRssFeed showToggleTheme showLanguageSwitcher />
   </slot>
   <main>
     <slot />

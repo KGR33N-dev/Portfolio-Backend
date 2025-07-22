@@ -1,0 +1,280 @@
+---
+import Layout from '~/layouts/PageLayout.astro';
+import { useTranslations } from '~/i18n/utils';
+import { languages } from '~/i18n';
+
+import Hero from '~/components/widgets/Hero.astro';
+import Content from '~/components/widgets/Content.astro';
+import Features3 from '~/components/widgets/Features3.astro';
+import Steps from '~/components/widgets/Steps.astro';
+
+export function getStaticPaths() {
+  return Object.keys(languages).map(lang => ({
+    params: { lang }
+  }));
+}
+
+const { lang } = Astro.params;
+const t = useTranslations(lang as keyof typeof languages);
+
+const metadata = {
+  title: t('meta.title'),
+  description: t('meta.description'),
+};
+---
+
+<Layout metadata={metadata}>
+  <!-- Hero Widget ******************* -->
+  <Hero
+    id="hero"
+    title="Krzysztof Głuchowski"
+    tagline={t('hero.tagline')}
+    actions={[{ variant: 'primary', text: t('nav.contact'), href: `/${lang}/contact#form` }]}
+  >
+    <Fragment slot="subtitle">
+      {t('hero.subtitle')}
+    </Fragment>
+  </Hero>
+
+  <!-- Content Widget **************** -->
+  <Content
+    id="about"
+    columns={3}
+    items={[
+      {
+        icon: 'tabler:brand-github',
+        callToAction: {
+          target: '_blank',
+          text: 'GitHub',
+          href: 'https://github.com/KGR33N-dev',
+        },
+      },
+      {
+        icon: 'tabler:brand-linkedin',
+        callToAction: {
+          target: '_blank',
+          text: 'LinkedIn',
+          href: 'https://www.linkedin.com/in/krzysztof-głuchowski/',
+        },
+      },
+      {
+        icon: 'tabler:mail',
+        callToAction: {
+          target: '_blank',
+          text: 'Email',
+          href: 'mailto:gluchowski.job@gmail.com',
+        },
+      },
+    ]}
+    image={{
+      src: '~/assets/images/My-photo.jpeg',
+      alt: 'Krzysztof Głuchowski Photo',
+      loading: 'eager',
+    }}
+  >
+    <Fragment slot="content">
+      <h2 class="text-2xl font-bold tracking-tight dark:text-white sm:text-3xl mb-2">{t('about.title')}</h2>
+      <p>{t('about.content1')}</p>
+      <br />
+      <p>{t('about.content2')}</p>
+      <br />
+      <p>{t('about.content3')}</p>
+    </Fragment>
+
+    <Fragment slot="bg">
+      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
+    </Fragment>
+  </Content>
+
+  <!-- Steps Widget ****************** -->
+  <Steps
+    id="resume"
+    title={t('resume.work.title')}
+    items={[
+      {
+        title:
+          `${t('work.genotic.title')} <br /> <span class="font-normal">${t('work.genotic.company')}</span> <br /> <span class="text-sm font-normal">${t('work.genotic.period')}</span>`,
+        description: t('work.genotic.description'),
+        icon: 'tabler:briefcase',
+      },
+      {
+        title:
+          `${t('work.epicvr.title')} <br /> <span class="font-normal">${t('work.epicvr.company')}</span> <br /> <span class="text-sm font-normal">${t('work.epicvr.period')}</span>`,
+        description: t('work.epicvr.description'),
+        icon: 'tabler:briefcase',
+      },
+      {
+        title:
+          `${t('work.kenktech.title')} <br /> <span class="font-normal">${t('work.kenktech.company')}</span> <br /> <span class="text-sm font-normal">${t('work.kenktech.period')}</span>`,
+        description: t('work.kenktech.description'),
+        icon: 'tabler:briefcase',
+      },
+    ]}
+    classes={{ container: 'max-w-3xl' }}
+  />
+
+  <!-- Steps Widget ****************** -->
+  <Steps
+    id="education"
+    title={t('resume.education.title')}
+    items={[
+      {
+        title: `${t('education.university.title')} <br /> <span class="font-normal">${t('education.university.school')}</span> <br /> <span class="text-sm font-normal">${t('education.university.period')}</span>`,
+        description: t('education.university.description'),
+        icon: 'tabler:school',
+      },
+      {
+        title: `${t('education.technical.title')} <br /> <span class="font-normal">${t('education.technical.school')}</span> <br /> <span class="text-sm font-normal">${t('education.technical.period')}</span>`,
+        description: t('education.technical.description'),
+        icon: 'tabler:certificate',
+      },
+    ]}
+    classes={{ container: 'max-w-3xl' }}
+  />
+
+  <!-- Features3 Widget ************** -->
+  <Features3
+    title={t('skills.title')}
+    subtitle={t('skills.subtitle')}
+    columns={3}
+    defaultIcon="tabler:point-filled"
+    items={[
+      {
+        title: t('skills.python.title'),
+        description: t('skills.python.description'),
+      },
+      {
+        title: t('skills.csharp.title'),
+        description: t('skills.csharp.description'),
+      },
+      {
+        title: t('skills.unity.title'),
+        description: t('skills.unity.description'),
+      },
+      {
+        title: t('skills.django.title'),
+        description: t('skills.django.description'),
+      },
+      {
+        title: t('skills.database.title'),
+        description: t('skills.database.description'),
+      },
+      {
+        title: t('skills.web.title'),
+        description: t('skills.web.description'),
+      },
+      {
+        title: t('skills.git.title'),
+        description: t('skills.git.description'),
+      },
+      {
+        title: t('skills.docker.title'),
+        description: t('skills.docker.description'),
+      },
+      {
+        title: t('skills.problemsolving.title'),
+        description: t('skills.problemsolving.description'),
+      },
+    ]}
+  />
+
+  <!-- Content Widget **************** -->
+  <Content
+    id="porfolio"
+    title={t('portfolio.title')}
+    subtitle={t('portfolio.subtitle')}
+    isReversed
+    items={[
+      {
+        title: t('project1.description.title'),
+        description: t('project1.description.content'),
+      },
+      {
+        title: t('project1.technologies.title'),
+        description: t('project1.technologies.content'),
+      },
+    ]}
+    image={{
+      src: '~/assets/images/projects/project_1.jpeg',
+      alt: 'AI Biotechnology Platform - Laboratory Management System',
+    }}
+  >
+    <Fragment slot="content">
+      <h3 class="text-2xl font-bold tracking-tight dark:text-white sm:text-3xl mb-2">
+        <span class="text-2xl">{t('project1.title')}</span>
+      </h3>
+    </Fragment>
+
+    <Fragment slot="bg">
+      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
+    </Fragment>
+  </Content>
+
+  <!-- Content Widget **************** -->
+
+  <Content
+    isReversed
+    isAfterContent={true}
+    items={[
+      {
+        title: t('project2.description.title'),
+        description: t('project2.description.content'),
+      },
+      {
+        title: t('project2.technologies.title'),
+        description: t('project2.technologies.content'),
+      },
+    ]}
+    image={{
+      src: '~/assets/images/projects/project_2.jpeg',
+      alt: 'VR Game Development - Contraband Police',
+    }}
+    callToAction={{
+      target: '_blank',
+      text: t('project2.steam'),
+      href: 'https://store.steampowered.com/app/756800/Contraband_Police/',
+      icon: 'tabler:brand-steam',
+    }}
+  >
+    <Fragment slot="content">
+      <h3 class="text-2xl font-bold tracking-tight dark:text-white sm:text-3xl mb-2">
+        <span class="text-2xl">{t('project2.title')}</span>
+      </h3>
+    </Fragment>
+
+    <Fragment slot="bg">
+      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
+    </Fragment>
+  </Content>
+
+  <!-- Content Widget **************** -->
+
+  <Content
+    isReversed
+    isAfterContent={true}
+    items={[
+      {
+        title: t('project3.description.title'),
+        description: t('project3.description.content'),
+      },
+      {
+        title: t('project3.technologies.title'),
+        description: t('project3.technologies.content'),
+      },
+    ]}
+    image={{
+      src: '~/assets/images/projects/project_3.jpeg',
+      alt: 'Property Management Web Application',
+    }}
+  >
+    <Fragment slot="content">
+      <h3 class="text-2xl font-bold tracking-tight dark:text-white sm:text-3xl mb-2">
+        <span class="text-2xl">{t('project3.title')}</span>
+      </h3>
+    </Fragment>
+
+    <Fragment slot="bg">
+      <div class="absolute inset-0 bg-blue-50 dark:bg-transparent"></div>
+    </Fragment>
+  </Content>
+</Layout>
