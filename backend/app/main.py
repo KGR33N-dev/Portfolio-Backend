@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from decouple import config
+import os
 from .database import engine, Base
 from .routers import blog, auth
 import uvicorn
@@ -8,15 +8,25 @@ import uvicorn
 # Create all tables
 Base.metadata.create_all(bind=engine)
 
+# Get environment
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+
 app = FastAPI(
     title="Portfolio API",
     description="Backend API dla portfolio KGR33N",
     version="1.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc"
+    docs_url="/api/docs" if DEBUG else None,  # Disable docs in production
+    redoc_url="/api/redoc" if DEBUG else None,
+    openapi_url="/api/openapi.json" if DEBUG else None
 )
 
-# CORS Configuration - Development
+# CORS Configuration - Production ready
+# Get allowed origins from environment or use defaults
+import os
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:4321")
+PRODUCTION_FRONTEND = os.getenv("PRODUCTION_FRONTEND", "")
+
 origins = [
     "http://localhost:4321",
     "http://localhost:4322", 
@@ -24,6 +34,15 @@ origins = [
     "https://localhost:4321",
     "https://localhost:4322"
 ]
+
+# Add production frontend URL if provided
+if PRODUCTION_FRONTEND:
+    origins.extend([
+        PRODUCTION_FRONTEND,
+        f"https://{PRODUCTION_FRONTEND.replace('https://', '').replace('http://', '')}",
+        f"https://www.{PRODUCTION_FRONTEND.replace('https://', '').replace('http://', '').replace('www.', '')}"
+    ])
+
 print(f"🔧 CORS Origins: {origins}")  # Debug
 
 app.add_middleware(
