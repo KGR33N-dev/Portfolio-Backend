@@ -10,8 +10,8 @@ services:
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:4321}
       - PRODUCTION_FRONTEND=${PRODUCTION_FRONTEND}
       - SECRET_KEY=${SECRET_KEY}
-      - ENVIRONMENT=production
-      - DEBUG=False
+      - ENVIRONMENT=development
+      - DEBUG=True
     restart: unless-stopped
     depends_on:
       - db

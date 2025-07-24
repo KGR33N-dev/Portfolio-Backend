@@ -59,11 +59,16 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
 @app.get("/")
 async def root():
-    return {"message": "Portfolio API działa! 🚀"}
+    return {"message": "Portfolio API działa! 🚀", "environment": ENVIRONMENT}
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "healthy", "message": "API is running"}
+    return {
+        "status": "healthy", 
+        "message": "API is running",
+        "environment": ENVIRONMENT,
+        "debug": DEBUG
+    }
 
 if __name__ == "__main__":
     uvicorn.run(
