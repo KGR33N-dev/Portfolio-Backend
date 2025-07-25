@@ -1,27 +1,49 @@
-# build output
+# Build output
 dist/
 .output/
+build/
 
-# dependencies
+# Dependencies
 node_modules/
+*/node_modules/
 
-# logs
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.log
 
-
-# environment variables
+# Environment variables - NEVER commit these!
 .env
+.env.*
+.env.local
+.env.development
 .env.production
+.env.staging
+.env.test
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 
 # macOS-specific files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
+# Package manager locks
 pnpm-lock.yaml
+yarn.lock
+package-lock.json
 
-.astro
+# Astro
+.astro/
 
 # Python
 __pycache__/
@@ -30,20 +52,98 @@ __pycache__/
 *.pyd
 *.so
 *.egg-info/
-*.log
-
-# Env
-.env
-.env.*
+.Python
+env/
 venv/
 .venv/
+ENV/
+env.bak/
+venv.bak/
 
-# Alembic caches
+# Alembic
 alembic/versions/__pycache__/
 alembic/__pycache__/
 
-# VSCode
+# IDE/Editor files
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Mac/Linux system
+# AWS & Deployment secrets
+*.pem
+*.key
+*.crt
+*.p12
+.aws/
+aws-config.json
+terraform.tfstate*
+*.tfvars
+
+# SSH Keys & Certificates
+ssh_keys/
+certificates/
+id_rsa*
+id_ed25519*
+known_hosts
+
+# Database dumps & backups
+*.sql.gz
+*.dump
+backup/
+dumps/
+
+# Security & Secrets
+secrets/
+private/
+*.secret
+*.private
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.temp/
+
+# OS generated files
+Thumbs.db
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# ESLint cache
+.eslintcache
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity

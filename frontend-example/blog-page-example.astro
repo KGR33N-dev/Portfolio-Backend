@@ -1,0 +1,125 @@
+---
+// Example Astro page: src/pages/en/blog.astro
+// Copy this to your Portfolio frontend project
+
+import { API_BASE_URL } from '../../config/api.js';
+
+let posts = [];
+let error = null;
+
+try {
+  console.log('Fetching from:', `${API_BASE_URL}/api/blog/?language=en`);
+  const response = await fetch(`${API_BASE_URL}/api/blog/?language=en`);
+  
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  posts = data.items || [];
+  
+  console.log(`✅ Loaded ${posts.length} blog posts`);
+} catch (err) {
+  console.error('❌ Failed to fetch blog posts:', err);
+  error = err.message;
+}
+---
+
+<html lang="en">
+<head>
+  <title>Blog | KGR33N Portfolio</title>
+  <meta charset="utf-8" />
+  <meta name="description" content="Blog posts about game development and programming" />
+</head>
+<body>
+  <main>
+    <h1>Blog</h1>
+    
+    {error && (
+      <div class="error">
+        <p>⚠️ Could not load blog posts: {error}</p>
+        <p>API URL: {API_BASE_URL}/api/blog/?language=en</p>
+      </div>
+    )}
+    
+    {posts.length > 0 ? (
+      <div class="blog-posts">
+        {posts.map(post => (
+          <article class="blog-post">
+            <h2>{post.title}</h2>
+            <div class="meta">
+              <span>By {post.author}</span>
+              <span>{new Date(post.created_at).toLocaleDateString()}</span>
+              <span class="category">{post.category}</span>
+            </div>
+            {post.excerpt && <p class="excerpt">{post.excerpt}</p>}
+            <a href={`/en/blog/${post.slug}`} class="read-more">
+              Read more →
+            </a>
+          </article>
+        ))}
+      </div>
+    ) : !error && (
+      <p>No blog posts found.</p>
+    )}
+  </main>
+</body>
+</html>
+
+<style>
+.error {
+  background: #fee;
+  border: 1px solid #fcc;
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.blog-posts {
+  display: grid;
+  gap: 2rem;
+  margin: 2rem 0;
+}
+
+.blog-post {
+  border: 1px solid #ddd;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.blog-post h2 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.category {
+  background: #e7f3ff;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+}
+
+.excerpt {
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.read-more {
+  color: #0066cc;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.read-more:hover {
+  text-decoration: underline;
+}
+</style>

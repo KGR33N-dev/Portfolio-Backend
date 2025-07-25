@@ -1,0 +1,99 @@
+name: Deploy Portfolio Backend to AWS EC2
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+    - name: Add EC2 to known hosts
+      run: |
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to EC2
+      run: |
+        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          # Navigate to application directory
+          cd /opt/portfolio-backend || (echo "Directory not found, creating..." && sudo mkdir -p /opt/portfolio-backend && sudo chown ec2-user:ec2-user /opt/portfolio-backend && cd /opt/portfolio-backend)
+          
+          # Clone or pull latest code
+          if [ ! -d ".git" ]; then
+            echo "Cloning repository..."
+            git clone https://github.com/KGR33N-dev/Portfolio-Backend.git .
+          else
+            echo "Pulling latest changes..."
+            git pull origin main
+          fi
+          
+          # Set environment variables for production
+          export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+          export SECRET_KEY="${{ secrets.SECRET_KEY }}"
+          export FRONTEND_URL="https://kgr33n.com"
+          export PRODUCTION_FRONTEND="https://kgr33n.com"
+          
+          # Stop existing containers
+          echo "Stopping existing containers..."
+          sudo docker compose -f backend/docker-compose.prod.yml down || true
+          
+          # Build and start new containers
+          echo "Building and starting containers..."
+          sudo docker compose -f backend/docker-compose.prod.yml up -d --build
+          
+          # Wait for container to start
+          echo "Waiting for container to start..."
+          sleep 15
+          
+          # Check container status
+          sudo docker compose -f backend/docker-compose.prod.yml ps
+          
+          # Clean up old images
+          sudo docker image prune -f || true
+          
+          echo "✅ Deployment completed!"
+        EOF
+
+    - name: Verify deployment
+      run: |
+        echo "🔍 Verifying deployment..."
+        sleep 30
+        
+        # Test health endpoint
+        if curl -f --max-time 10 http://${{ secrets.EC2_HOST }}:8000/api/health; then
+          echo "✅ Health check passed!"
+        else
+          echo "❌ Health check failed!"
+          exit 1
+        fi
+        
+        # Test blog API
+        if curl -f --max-time 10 http://${{ secrets.EC2_HOST }}:8000/api/blog/; then
+          echo "✅ Blog API accessible!"
+        else
+          echo "⚠️ Blog API test failed, but continuing..."
+        fi
+
+    - name: Notify on success
+      if: success()
+      run: |
+        echo "🚀 Deployment successful!"
+        echo "🌐 API available at: http://${{ secrets.EC2_HOST }}:8000"
+        echo "🔍 Health check: http://${{ secrets.EC2_HOST }}:8000/api/health"
+        echo "📝 Blog API: http://${{ secrets.EC2_HOST }}:8000/api/blog/"
+
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "❌ Deployment failed!"
+        echo "Check the logs above for details."

@@ -23,20 +23,23 @@ app = FastAPI(
 
 # CORS Configuration - Production ready
 # Get allowed origins from environment or use defaults
-import os
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:4321")
-PRODUCTION_FRONTEND = os.getenv("PRODUCTION_FRONTEND", "")
+PRODUCTION_FRONTEND = os.getenv("PRODUCTION_FRONTEND", "https://kgr33n.com")
 
 origins = [
     "http://localhost:4321",
     "http://localhost:4322", 
     "http://localhost:3000",
     "https://localhost:4321",
-    "https://localhost:4322"
+    "https://localhost:4322",
+    "https://kgr33n.com",
+    "https://www.kgr33n.com",
+    "http://kgr33n.com",
+    "http://www.kgr33n.com"
 ]
 
 # Add production frontend URL if provided
-if PRODUCTION_FRONTEND:
+if PRODUCTION_FRONTEND and PRODUCTION_FRONTEND not in origins:
     origins.extend([
         PRODUCTION_FRONTEND,
         f"https://{PRODUCTION_FRONTEND.replace('https://', '').replace('http://', '')}",
@@ -75,5 +78,5 @@ if __name__ == "__main__":
         "main:app", 
         host="0.0.0.0", 
         port=8000, 
-        reload=True if config('ENVIRONMENT', default='development') == 'development' else False
+        reload=True if ENVIRONMENT == 'development' else False
     )
