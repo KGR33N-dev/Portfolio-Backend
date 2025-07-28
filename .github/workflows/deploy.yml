@@ -52,14 +52,12 @@ jobs:
           export DEBUG="False"
           
           # Create .env.production file
-          cat > .env.production << EOL
-DATABASE_URL=${{ secrets.DATABASE_URL }}
-SECRET_KEY=${{ secrets.SECRET_KEY }}
-FRONTEND_URL=https://kgr33n.com
-PRODUCTION_FRONTEND=https://kgr33n.com
-ENVIRONMENT=production
-DEBUG=False
-EOL
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env.production
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env.production
+          echo "FRONTEND_URL=https://kgr33n.com" >> .env.production
+          echo "PRODUCTION_FRONTEND=https://kgr33n.com" >> .env.production
+          echo "ENVIRONMENT=production" >> .env.production
+          echo "DEBUG=False" >> .env.production
           
           # Stop existing containers
           echo "Stopping existing containers..."
