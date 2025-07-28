@@ -7,85 +7,56 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup SSH
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
-
-    - name: Setup SSH config
+    - name: Deploy locally
       run: |
-        mkdir -p ~/.ssh
-        echo "Host *" >> ~/.ssh/config
-        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-        echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
-        chmod 600 ~/.ssh/config
-
-    - name: Deploy to EC2
-      run: |
-        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-          # Navigate to home directory and portfolio app
-          cd ~
-          
-          # Clone or pull latest code
-          if [ ! -d "Portfolio-Backend" ]; then
-            echo "Cloning repository..."
-            git clone https://github.com/KGR33N-dev/Portfolio-Backend.git
-          else
-            echo "Pulling latest changes..."
-            cd Portfolio-Backend
-            git pull origin main
-            cd ~
-          fi
-          
-          # Navigate to backend directory
-          cd Portfolio-Backend/backend
-          
-          # Set environment variables for production
-          export DATABASE_URL="${{ secrets.DATABASE_URL }}"
-          export SECRET_KEY="${{ secrets.SECRET_KEY }}"
-          export FRONTEND_URL="https://kgr33n.com"
-          export PRODUCTION_FRONTEND="https://kgr33n.com"
-          export ENVIRONMENT="production"
-          export DEBUG="False"
-          
-          # Create .env.production file
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env.production
-          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env.production
-          echo "FRONTEND_URL=https://kgr33n.com" >> .env.production
-          echo "PRODUCTION_FRONTEND=https://kgr33n.com" >> .env.production
-          echo "ENVIRONMENT=production" >> .env.production
-          echo "DEBUG=False" >> .env.production
-          
-          # Stop existing containers
-          echo "Stopping existing containers..."
-          docker compose -f docker-compose.prod.yml down || true
-          
-          # Build and start new containers
-          echo "Building and starting containers..."
-          docker compose -f docker-compose.prod.yml up -d --build
-          
-          # Wait for container to start
-          echo "Waiting for container to start..."
-          sleep 15
-          
-          # Check container status
-          docker compose -f docker-compose.prod.yml ps
-          
-          # Show logs for debugging
-          echo "=== Container logs ==="
-          docker compose -f docker-compose.prod.yml logs --tail=20
-          
-          # Clean up old images
-          docker image prune -f || true
-          
-          echo "✅ Deployment completed!"
-        EOF
+        # Navigate to backend directory
+        cd backend
+        
+        # Set environment variables for production
+        export DATABASE_URL="${{ secrets.DATABASE_URL }}"
+        export SECRET_KEY="${{ secrets.SECRET_KEY }}"
+        export FRONTEND_URL="https://kgr33n.com"
+        export PRODUCTION_FRONTEND="https://kgr33n.com"
+        export ENVIRONMENT="production"
+        export DEBUG="False"
+        
+        # Create .env.production file
+        echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env.production
+        echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env.production
+        echo "FRONTEND_URL=https://kgr33n.com" >> .env.production
+        echo "PRODUCTION_FRONTEND=https://kgr33n.com" >> .env.production
+        echo "ENVIRONMENT=production" >> .env.production
+        echo "DEBUG=False" >> .env.production
+        
+        # Stop existing containers
+        echo "Stopping existing containers..."
+        docker compose -f docker-compose.prod.yml down || true
+        
+        # Build and start new containers
+        echo "Building and starting containers..."
+        docker compose -f docker-compose.prod.yml up -d --build
+        
+        # Wait for container to start
+        echo "Waiting for container to start..."
+        sleep 15
+        
+        # Check container status
+        docker compose -f docker-compose.prod.yml ps
+        
+        # Show logs for debugging
+        echo "=== Container logs ==="
+        docker compose -f docker-compose.prod.yml logs --tail=20
+        
+        # Clean up old images
+        docker image prune -f || true
+        
+        echo "✅ Deployment completed!"
 
     - name: Verify deployment
       run: |
@@ -93,7 +64,7 @@ jobs:
         sleep 30
         
         # Test health endpoint
-        if curl -f --max-time 10 http://${{ secrets.EC2_HOST }}:8000/api/health; then
+        if curl -f --max-time 10 http://localhost:8000/api/health; then
           echo "✅ Health check passed!"
         else
           echo "❌ Health check failed!"
@@ -101,7 +72,7 @@ jobs:
         fi
         
         # Test blog API
-        if curl -f --max-time 10 http://${{ secrets.EC2_HOST }}:8000/api/blog/; then
+        if curl -f --max-time 10 http://localhost:8000/api/blog/; then
           echo "✅ Blog API accessible!"
         else
           echo "⚠️ Blog API test failed, but continuing..."
@@ -111,9 +82,9 @@ jobs:
       if: success()
       run: |
         echo "🚀 Deployment successful!"
-        echo "🌐 API available at: http://${{ secrets.EC2_HOST }}:8000"
-        echo "🔍 Health check: http://${{ secrets.EC2_HOST }}:8000/api/health"
-        echo "📝 Blog API: http://${{ secrets.EC2_HOST }}:8000/api/blog/"
+        echo "🌐 API available at: http://51.20.78.79:8000"
+        echo "🔍 Health check: http://51.20.78.79:8000/api/health"
+        echo "📝 Blog API: http://51.20.78.79:8000/api/blog/"
 
     - name: Notify on failure
       if: failure()
