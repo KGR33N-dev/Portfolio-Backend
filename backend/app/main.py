@@ -35,7 +35,8 @@ origins = [
     "https://kgr33n.com",
     "https://www.kgr33n.com",
     "http://kgr33n.com",
-    "http://www.kgr33n.com"
+    "http://www.kgr33n.com",
+    "https://api.kgr33n.com"
 ]
 
 # Add production frontend URL if provided

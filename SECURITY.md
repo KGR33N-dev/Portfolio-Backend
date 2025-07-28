@@ -36,9 +36,9 @@ Set these in repository settings → Secrets:
 
 ```
 EC2_HOST=51.20.78.79
-EC2_USER=ec2-user
+EC2_USER=ubuntu
 EC2_SSH_KEY=[full private key content]
-DATABASE_URL=postgresql://postgres:REAL_PASSWORD@localhost:5432/portfolio
+DATABASE_URL=postgresql://fastapi_user:REAL_PASSWORD@localhost:5432/fastapi_db
 SECRET_KEY=[generated 32-char hex string]
 ```
 
