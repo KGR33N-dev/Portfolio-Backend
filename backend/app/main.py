@@ -1,8 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 import os
 from .database import engine, Base
 from .routers import blog, auth
+from .security import limiter
 import uvicorn
 
 # Create all tables
@@ -30,8 +35,10 @@ origins = [
     "http://localhost:4321",
     "http://localhost:4322", 
     "http://localhost:3000",
+    "http://localhost:8000",
     "https://localhost:4321",
     "https://localhost:4322",
+    "https://localhost:8000",
     "https://kgr33n.com",
     "https://www.kgr33n.com",
     "http://kgr33n.com",
@@ -57,9 +64,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# Add rate limiting middleware
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+# Include routers with authentication
 app.include_router(blog.router, prefix="/api/blog", tags=["blog"])
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(auth.router, prefix="/api", tags=["auth"])
 
 @app.get("/")
 async def root():

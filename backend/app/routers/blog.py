@@ -5,8 +5,9 @@ from datetime import datetime
 import re
 
 from ..database import get_db
-from ..models import BlogPost, BlogTag
+from ..models import BlogPost, BlogTag, User
 from ..schemas import BlogPostCreate, BlogPostUpdate, BlogPostPublic, BlogPostAdmin, APIResponse, PaginatedResponse
+from ..security import get_current_admin_user
 
 router = APIRouter()
 
@@ -122,16 +123,17 @@ async def get_blog_post_by_slug(
 @router.post("/", response_model=BlogPostPublic, status_code=status.HTTP_201_CREATED)
 async def create_blog_post(
     post_data: BlogPostCreate,
+    current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Utwórz nowy post bloga"""
+    """Create new blog post (admin only)"""
     
     # Check if slug already exists
     existing_post = db.query(BlogPost).filter(BlogPost.slug == post_data.slug).first()
     if existing_post:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Post ze slug '{post_data.slug}' już istnieje"
+            detail=f"Post with slug '{post_data.slug}' already exists"
         )
     
     # Create new post
@@ -141,6 +143,7 @@ async def create_blog_post(
         content=post_data.content,
         excerpt=post_data.excerpt,
         author=post_data.author,
+        author_id=current_user.id,  # Set the authenticated user as author
         meta_title=post_data.meta_title or post_data.title,
         meta_description=post_data.meta_description or post_data.excerpt,
         language=post_data.language,
@@ -165,15 +168,16 @@ async def create_blog_post(
 async def update_blog_post(
     post_id: int,
     post_data: BlogPostUpdate,
+    current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Aktualizuj istniejący post"""
+    """Update existing blog post (admin only)"""
     
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Post nie został znaleziony"
+            detail="Post not found"
         )
     
     # Update fields if provided
@@ -207,15 +211,16 @@ async def update_blog_post(
 @router.delete("/{post_id}", response_model=APIResponse)
 async def delete_blog_post(
     post_id: int,
+    current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Usuń post bloga"""
+    """Delete blog post (admin only)"""
     
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Post nie został znaleziony"
+            detail="Post not found"
         )
     
     # Delete tags first (foreign key constraint)
@@ -227,21 +232,22 @@ async def delete_blog_post(
     
     return APIResponse(
         success=True,
-        message=f"Post '{post.title}' został usunięty"
+        message=f"Post '{post.title}' has been deleted"
     )
 
 @router.put("/{post_id}/publish", response_model=BlogPostPublic)
 async def publish_blog_post(
     post_id: int,
+    current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Opublikuj post"""
+    """Publish blog post (admin only)"""
     
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Post nie został znaleziony"
+            detail="Post not found"
         )
     
     post.is_published = True
