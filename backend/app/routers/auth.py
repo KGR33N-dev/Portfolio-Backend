@@ -22,9 +22,9 @@ from ..security import (
     strict_rate_limit_login, handle_failed_login, is_email_valid, 
     is_password_strong, get_security_headers, generate_verification_code,
     generate_verification_token, create_verification_token, verify_verification_token,
-    hash_verification_code, verify_verification_code, send_verification_email,
-    send_password_reset_email
+    hash_verification_code, verify_verification_code
 )
+from ..email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -76,9 +76,12 @@ async def register_user(
                 db.commit()
                 
                 # Send verification email
-                email_sent = await send_verification_email(user_data.email, verification_code, verification_token)
+                email_service = EmailService()
+                email_result = await email_service.send_verification_email(
+                    user_data.email, verification_code, existing_user.username
+                )
                 
-                if not email_sent:
+                if not email_result.get("success", False):
                     raise HTTPException(
                         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         detail="Failed to send verification email"
@@ -102,7 +105,7 @@ async def register_user(
     # Hash password
     hashed_password = get_password_hash(user_data.password)
     
-    # Create new unverified user
+    # Create new unverified user with account expiration
     db_user = User(
         username=user_data.username,
         email=user_data.email,
@@ -114,17 +117,21 @@ async def register_user(
         email_verified=False,
         verification_code_hash=hash_verification_code(verification_code),
         verification_token=verification_token,
-        verification_expires_at=datetime.utcnow() + timedelta(minutes=15)
+        verification_expires_at=datetime.utcnow() + timedelta(minutes=15),
+        account_expires_at=datetime.utcnow() + timedelta(days=1)  # Account expires in 24 hours if not verified
     )
     
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     
-    # Send verification email
-    email_sent = await send_verification_email(user_data.email, verification_code, verification_token)
+    # Send verification email using EmailService
+    email_service = EmailService()
+    email_result = await email_service.send_verification_email(
+        user_data.email, verification_code, user_data.username
+    )
     
-    if not email_sent:
+    if not email_result.get("success", False):
         # Rollback user creation if email failed
         db.delete(db_user)
         db.commit()
@@ -242,10 +249,13 @@ async def resend_verification_code(
     
     db.commit()
     
-    # Send verification email
-    email_sent = await send_verification_email(email_data.email, verification_code, verification_token)
+    # Send verification email using EmailService
+    email_service = EmailService()
+    email_result = await email_service.send_verification_email(
+        email_data.email, verification_code, user.username
+    )
     
-    if not email_sent:
+    if not email_result.get("success", False):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to send verification email"
@@ -353,10 +363,13 @@ async def request_password_reset(
     
     db.commit()
     
-    # Send password reset email
-    email_sent = await send_password_reset_email(reset_data.email, reset_token)
+    # Send password reset email using EmailService
+    email_service = EmailService()
+    email_result = await email_service.send_password_reset_email(
+        reset_data.email, reset_token, user.username
+    )
     
-    if not email_sent:
+    if not email_result.get("success", False):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to send password reset email"

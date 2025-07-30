@@ -41,7 +41,18 @@ class BlogPostPublic(BlogPostBase):
 
 class BlogPostAdmin(BlogPostPublic):
     """Extended schema for admin operations"""
-    pass
+    author_id: Optional[int] = None  # Include author_id for admin operations
+
+# Contact Schemas
+class ContactForm(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    email: str = Field(..., pattern=r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    subject: str = Field(..., min_length=1, max_length=200)
+    message: str = Field(..., min_length=10, max_length=2000)
+
+class ContactResponse(BaseModel):
+    success: bool
+    message: str
 
 # Tag Schemas
 class TagCreate(BaseModel):

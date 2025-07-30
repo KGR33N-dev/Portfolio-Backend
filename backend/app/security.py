@@ -380,37 +380,74 @@ def verify_verification_code(plain_code: str, hashed_code: str) -> bool:
     """Verify verification code against hash"""
     return secrets.compare_digest(hash_verification_code(plain_code), hashed_code)
 
-# Email sending functionality (placeholder - implement with your email provider)
+# Email sending functionality using Resend
 async def send_verification_email(email: str, verification_code: str, verification_token: str) -> bool:
-    """Send verification email to user"""
+    """Send verification email to user using Resend"""
     try:
-        # TODO: Implement with your email provider (SendGrid, AWS SES, etc.)
-        # For now, just log the verification code (remove in production)
-        print(f"🔐 Verification code for {email}: {verification_code}")
-        print(f"🔗 Verification token: {verification_token}")
+        from .email_service import EmailService
         
-        # Email template would look like:
-        # Subject: Potwierdź swój adres email - Portfolio KGR33N
-        # Body: 
-        # Witaj!
-        # 
-        # Twój kod weryfikacyjny to: {verification_code}
-        # 
-        # Kod jest ważny przez 15 minut.
-        # 
-        # Jeśli to nie Ty, zignoruj tę wiadomość.
+        # Get username from email (fallback)
+        username = email.split('@')[0]
         
-        return True
+        # Try to get actual username from database
+        from .database import SessionLocal
+        from .models import User
+        
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.email == email).first()
+            if user:
+                username = user.username or user.full_name or username
+        finally:
+            db.close()
+        
+        result = await EmailService.send_verification_email(email, verification_code, username)
+        
+        if result["success"]:
+            print(f"✅ Verification email sent to {email}")
+            return True
+        else:
+            print(f"❌ Failed to send verification email to {email}: {result['message']}")
+            return False
+            
     except Exception as e:
         print(f"❌ Failed to send verification email: {e}")
+        # Fallback: log the code for development
+        print(f"🔐 Verification code for {email}: {verification_code}")
+        print(f"🔗 Verification token: {verification_token}")
         return False
 
 async def send_password_reset_email(email: str, reset_token: str) -> bool:
-    """Send password reset email"""
+    """Send password reset email using Resend"""
     try:
-        # TODO: Implement with your email provider
-        print(f"🔐 Password reset token for {email}: {reset_token}")
-        return True
+        from .email_service import EmailService
+        
+        # Get username from email (fallback)
+        username = email.split('@')[0]
+        
+        # Try to get actual username from database
+        from .database import SessionLocal
+        from .models import User
+        
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.email == email).first()
+            if user:
+                username = user.username or user.full_name or username
+        finally:
+            db.close()
+        
+        result = await EmailService.send_password_reset_email(email, reset_token, username)
+        
+        if result["success"]:
+            print(f"✅ Password reset email sent to {email}")
+            return True
+        else:
+            print(f"❌ Failed to send password reset email to {email}: {result['message']}")
+            return False
+            
     except Exception as e:
         print(f"❌ Failed to send password reset email: {e}")
+        # Fallback: log the token for development
+        print(f"🔐 Password reset token for {email}: {reset_token}")
         return False

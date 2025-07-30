@@ -73,6 +73,9 @@ class User(Base):
     password_reset_token = Column(String(500))
     password_reset_expires_at = Column(DateTime)
     
+    # Account expiration for unverified accounts
+    account_expires_at = Column(DateTime)  # Account will be deleted if not verified by this time
+    
     # Two-factor authentication (future feature)
     two_factor_enabled = Column(Boolean, default=False)
     two_factor_secret = Column(String(255))

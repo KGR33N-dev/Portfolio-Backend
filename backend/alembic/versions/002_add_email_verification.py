@@ -34,12 +34,16 @@ def upgrade() -> None:
     op.add_column('users', sa.Column('two_factor_enabled', sa.Boolean(), default=False))
     op.add_column('users', sa.Column('two_factor_secret', sa.String(255), nullable=True))
     
+    # Add account expiration for unverified accounts
+    op.add_column('users', sa.Column('account_expires_at', sa.DateTime(), nullable=True))
+    
     # Update existing users to have email_verified = True for backward compatibility
     op.execute("UPDATE users SET email_verified = TRUE WHERE email_verified IS NULL")
 
 
 def downgrade() -> None:
     # Remove new columns
+    op.drop_column('users', 'account_expires_at')
     op.drop_column('users', 'two_factor_secret')
     op.drop_column('users', 'two_factor_enabled')
     op.drop_column('users', 'password_reset_expires_at')

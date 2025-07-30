@@ -12,6 +12,10 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - ENVIRONMENT=development
       - DEBUG=True
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - FROM_EMAIL=noreply@kgr33n.com
+      - FROM_NAME=${FROM_NAME}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
     restart: unless-stopped
     depends_on:
       - db

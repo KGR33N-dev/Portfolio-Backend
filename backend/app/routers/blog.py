@@ -258,6 +258,113 @@ async def publish_blog_post(
     
     return post
 
+@router.get("/admin/posts", response_model=PaginatedResponse)
+async def get_admin_blog_posts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    language: Optional[str] = Query(None, pattern="^(pl|en)$"),
+    category: Optional[str] = Query(None),
+    published_only: Optional[bool] = Query(None),
+    status: Optional[str] = Query(None, pattern="^(published|draft|all)$")
+):
+    """Admin endpoint: Pobierz wszystkie posty (w tym nieopublikowane) z paginacją"""
+    query = db.query(BlogPost)
+    
+    # Filter by language if specified
+    if language:
+        query = query.filter(BlogPost.language == language)
+    
+    # Filter by category if specified
+    if category:
+        query = query.filter(BlogPost.category == category)
+    
+    # Handle status filter
+    if status == "published":
+        query = query.filter(BlogPost.is_published == True)
+    elif status == "draft":
+        query = query.filter(BlogPost.is_published == False)
+    elif published_only is not None:
+        # Legacy parameter support
+        query = query.filter(BlogPost.is_published == published_only)
+    # If status="all" or no filter, show all posts
+    
+    # Order by creation date (newest first), then by published date
+    query = query.order_by(BlogPost.created_at.desc(), BlogPost.published_at.desc())
+    
+    # Calculate pagination
+    total = query.count()
+    posts = query.offset((page - 1) * per_page).limit(per_page).all()
+    
+    # Convert posts to response format with admin details
+    posts_data = []
+    for post in posts:
+        post_dict = {
+            "id": post.id,
+            "title": post.title,
+            "slug": post.slug,
+            "content": post.content,
+            "excerpt": post.excerpt,
+            "author": post.author,
+            "author_id": post.author_id,  # Include author_id for admin
+            "meta_title": post.meta_title,
+            "meta_description": post.meta_description,
+            "language": post.language,
+            "category": post.category,
+            "created_at": post.created_at,
+            "updated_at": post.updated_at,
+            "is_published": post.is_published,
+            "published_at": post.published_at,
+            "tags": [tag.tag_name for tag in post.tags] if post.tags else []
+        }
+        posts_data.append(post_dict)
+    
+    return PaginatedResponse(
+        items=posts_data,
+        total=total,
+        page=page,
+        pages=(total + per_page - 1) // per_page,
+        per_page=per_page
+    )
+
+@router.get("/admin/posts/{post_id}", response_model=BlogPostAdmin)
+async def get_admin_blog_post_by_id(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Admin endpoint: Pobierz pojedynczy post po ID (w tym nieopublikowane)"""
+    post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
+    
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Post nie został znaleziony"
+        )
+    
+    # Format response with tags and admin details
+    post_dict = {
+        "id": post.id,
+        "title": post.title,
+        "slug": post.slug,
+        "content": post.content,
+        "excerpt": post.excerpt,
+        "author": post.author,
+        "author_id": post.author_id,  # Include author_id for admin
+        "meta_title": post.meta_title,
+        "meta_description": post.meta_description,
+        "language": post.language,
+        "category": post.category,
+        "created_at": post.created_at,
+        "updated_at": post.updated_at,
+        "is_published": post.is_published,
+        "published_at": post.published_at,
+        "tags": [tag.tag_name for tag in post.tags] if post.tags else []
+    }
+    
+    return post_dict
+
 @router.get("/categories/list")
 async def get_categories(db: Session = Depends(get_db)):
     """Pobierz listę wszystkich kategorii"""
