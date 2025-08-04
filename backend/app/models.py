@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -7,19 +7,12 @@ class BlogPost(Base):
     __tablename__ = "blog_posts"
     
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(200), nullable=False, index=True)
-    slug = Column(String(200), unique=True, nullable=False, index=True)
-    content = Column(Text, nullable=False)
-    excerpt = Column(Text)
+    slug = Column(String(200), unique=True, nullable=False, index=True)  # Base slug (language-independent)
     author = Column(String(100), default="KGR33N")
     author_id = Column(Integer, ForeignKey("users.id"))  # For authenticated authors
     
     # SEO and metadata
-    meta_title = Column(String(200))
-    meta_description = Column(String(300))
-    
-    # Language support
-    language = Column(String(2), default="pl")  # 'pl' or 'en'
+    featured_image = Column(String(500))  # URL to featured image
     
     # Timestamps
     created_at = Column(DateTime, server_default=func.now())
@@ -31,8 +24,38 @@ class BlogPost(Base):
     
     # Gaming/project related
     category = Column(String(50), default="general")  # general, gamedev, python, tutorial, etc.
+    
+    # Relationships
     tags = relationship("BlogTag", back_populates="post")
     author_user = relationship("User", back_populates="blog_posts")
+    translations = relationship("BlogPostTranslation", back_populates="post", cascade="all, delete-orphan")
+
+class BlogPostTranslation(Base):
+    __tablename__ = "blog_post_translations"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    post_id = Column(Integer, ForeignKey("blog_posts.id", ondelete="CASCADE"), nullable=False)
+    language_code = Column(String(10), ForeignKey("languages.code"), nullable=False)
+    
+    # Content fields per language
+    title = Column(String(200), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    excerpt = Column(Text)
+    
+    # SEO per language
+    meta_title = Column(String(200))
+    meta_description = Column(String(300))
+    
+    # Timestamps
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    post = relationship("BlogPost", back_populates="translations")
+    language = relationship("Language")
+    
+    # Ensure one translation per language per post
+    __table_args__ = (UniqueConstraint('post_id', 'language_code', name='uq_post_language'),)
 
 class BlogTag(Base):
     __tablename__ = "blog_tags"
@@ -118,3 +141,18 @@ class Vote(Base):
     
     # Relationships
     user = relationship("User")
+
+class Language(Base):
+    """Model dla dostępnych języków postów"""
+    __tablename__ = "languages"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(10), unique=True, nullable=False, index=True)  # np. 'en', 'pl', 'de', 'fr'
+    name = Column(String(100), nullable=False)  # np. 'English', 'Polski', 'Deutsch'
+    native_name = Column(String(100), nullable=False)  # np. 'English', 'Polski', 'Deutsch'
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+    created_by = Column(Integer, ForeignKey("users.id"))
+    
+    # Relationships
+    creator = relationship("User")

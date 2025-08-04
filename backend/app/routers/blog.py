@@ -5,11 +5,23 @@ from datetime import datetime
 import re
 
 from ..database import get_db
-from ..models import BlogPost, BlogTag, User
+from ..models import BlogPost, BlogTag, User, Language
 from ..schemas import BlogPostCreate, BlogPostUpdate, BlogPostPublic, BlogPostAdmin, APIResponse, PaginatedResponse
 from ..security import get_current_admin_user
 
 router = APIRouter()
+
+async def validate_language_code(language_code: str, db: Session) -> bool:
+    """Sprawdź czy kod języka jest prawidłowy i aktywny"""
+    if not language_code:
+        return True  # Allow empty language
+    
+    language = db.query(Language).filter(
+        Language.code == language_code,
+        Language.is_active == True
+    ).first()
+    
+    return language is not None
 
 def create_slug(title: str) -> str:
     """Create URL-friendly slug from title"""
@@ -23,31 +35,81 @@ async def get_blog_posts(
     db: Session = Depends(get_db),
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=100),
-    language: Optional[str] = Query(None, pattern="^(pl|en)$"),
+    language: Optional[str] = Query(None, description="Language code (e.g., 'en', 'pl', 'de')"),
     category: Optional[str] = Query(None),
-    published_only: bool = Query(True)
+    published_only: bool = Query(True),
+    tags: Optional[str] = Query(None, description="Comma-separated list of tags"),
+    ids: Optional[str] = Query(None, description="Comma-separated list of post IDs"),
+    limit: Optional[int] = Query(None, ge=1, le=100, description="Maximum number of results"),
+    sort: str = Query("published_at", pattern="^(published_at|created_at|title)$"),
+    order: str = Query("desc", pattern="^(asc|desc)$")
 ):
-    """Pobierz wszystkie posty bloga z paginacją"""
+    """Pobierz wszystkie posty bloga z paginacją i filtrowaniem"""
     query = db.query(BlogPost)
+    
+    # Filter by specific IDs if provided
+    if ids:
+        try:
+            id_list = [int(id.strip()) for id in ids.split(',') if id.strip()]
+            query = query.filter(BlogPost.id.in_(id_list))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid ID format in 'ids' parameter")
     
     # Filter by language if specified
     if language:
+        # Validate language code
+        if not await validate_language_code(language, db):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Language code '{language}' is not valid or active"
+            )
         query = query.filter(BlogPost.language == language)
     
     # Filter by category if specified
     if category:
         query = query.filter(BlogPost.category == category)
     
+    # Filter by tags if specified
+    if tags:
+        tag_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
+        for tag in tag_list:
+            query = query.filter(BlogPost.tags.any(BlogTag.tag_name == tag))
+    
     # Filter published posts for public API
     if published_only:
         query = query.filter(BlogPost.is_published == True)
     
-    # Order by publication date (newest first)
-    query = query.order_by(BlogPost.published_at.desc(), BlogPost.created_at.desc())
+    # Apply sorting
+    if sort == "published_at":
+        if order == "desc":
+            query = query.order_by(BlogPost.published_at.desc().nullslast(), BlogPost.created_at.desc())
+        else:
+            query = query.order_by(BlogPost.published_at.asc().nullsfirst(), BlogPost.created_at.asc())
+    elif sort == "created_at":
+        if order == "desc":
+            query = query.order_by(BlogPost.created_at.desc())
+        else:
+            query = query.order_by(BlogPost.created_at.asc())
+    elif sort == "title":
+        if order == "desc":
+            query = query.order_by(BlogPost.title.desc())
+        else:
+            query = query.order_by(BlogPost.title.asc())
     
-    # Calculate pagination
-    total = query.count()
-    posts = query.offset((page - 1) * per_page).limit(per_page).all()
+    # Apply limit if specified (overrides pagination)
+    if limit:
+        posts = query.limit(limit).all()
+        total = len(posts)
+        pages = 1
+        current_page = 1
+        items_per_page = limit
+    else:
+        # Calculate pagination
+        total = query.count()
+        posts = query.offset((page - 1) * per_page).limit(per_page).all()
+        pages = (total + per_page - 1) // per_page
+        current_page = page
+        items_per_page = per_page
     
     # Convert posts to response format
     posts_data = []
@@ -67,6 +129,7 @@ async def get_blog_posts(
             "updated_at": post.updated_at,
             "is_published": post.is_published,
             "published_at": post.published_at,
+            "featured_image": post.featured_image,
             "tags": [tag.tag_name for tag in post.tags] if post.tags else []
         }
         posts_data.append(post_dict)
@@ -74,19 +137,66 @@ async def get_blog_posts(
     return PaginatedResponse(
         items=posts_data,
         total=total,
-        page=page,
-        pages=(total + per_page - 1) // per_page,
-        per_page=per_page
+        page=current_page,
+        pages=pages,
+        per_page=items_per_page
     )
 
-@router.get("/{slug}", response_model=BlogPostPublic)
+@router.get("/slug/{slug}", response_model=BlogPostPublic)
 async def get_blog_post_by_slug(
     slug: str,
     db: Session = Depends(get_db),
+    language: Optional[str] = Query(None, pattern="^(pl|en)$"),
     include_unpublished: bool = Query(False)
 ):
     """Pobierz pojedynczy post po slug"""
     query = db.query(BlogPost).filter(BlogPost.slug == slug)
+    
+    # Filter by language if specified
+    if language:
+        query = query.filter(BlogPost.language == language)
+    
+    if not include_unpublished:
+        query = query.filter(BlogPost.is_published == True)
+    
+    post = query.first()
+    
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Post nie został znaleziony"
+        )
+    
+    # Format response with tags
+    post_dict = {
+        "id": post.id,
+        "title": post.title,
+        "slug": post.slug,
+        "content": post.content,
+        "excerpt": post.excerpt,
+        "author": post.author,
+        "meta_title": post.meta_title,
+        "meta_description": post.meta_description,
+        "language": post.language,
+        "category": post.category,
+        "created_at": post.created_at,
+        "updated_at": post.updated_at,
+        "is_published": post.is_published,
+        "published_at": post.published_at,
+        "featured_image": post.featured_image,
+        "tags": [tag.tag_name for tag in post.tags] if post.tags else []
+    }
+    
+    return post_dict
+
+@router.get("/{post_id}", response_model=BlogPostPublic)
+async def get_blog_post_by_id(
+    post_id: int,
+    db: Session = Depends(get_db),
+    include_unpublished: bool = Query(False)
+):
+    """Pobierz pojedynczy post po ID"""
+    query = db.query(BlogPost).filter(BlogPost.id == post_id)
     
     if not include_unpublished:
         query = query.filter(BlogPost.is_published == True)
@@ -128,6 +238,13 @@ async def create_blog_post(
 ):
     """Create new blog post (admin only)"""
     
+    # Validate language code
+    if not await validate_language_code(post_data.language, db):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Language code '{post_data.language}' is not valid or active"
+        )
+    
     # Check if slug already exists
     existing_post = db.query(BlogPost).filter(BlogPost.slug == post_data.slug).first()
     if existing_post:
@@ -147,7 +264,8 @@ async def create_blog_post(
         meta_title=post_data.meta_title or post_data.title,
         meta_description=post_data.meta_description or post_data.excerpt,
         language=post_data.language,
-        category=post_data.category
+        category=post_data.category,
+        featured_image=post_data.featured_image
     )
     
     db.add(new_post)

@@ -2,34 +2,81 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
-# Blog Post Schemas
-class BlogPostBase(BaseModel):
+# Blog Post Translation Schemas
+class BlogPostTranslationBase(BaseModel):
+    language_code: str = Field(..., min_length=2, max_length=10)
     title: str = Field(..., min_length=1, max_length=200)
     content: str = Field(..., min_length=1)
     excerpt: Optional[str] = None
-    author: str = "KGR33N"
     meta_title: Optional[str] = None
     meta_description: Optional[str] = None
-    language: str = Field(default="pl", pattern="^(pl|en)$")
-    category: str = "general"
 
-class BlogPostCreate(BlogPostBase):
-    slug: str = Field(..., min_length=1, max_length=200)
-    tags: Optional[List[str]] = []
+class BlogPostTranslationCreate(BlogPostTranslationBase):
+    pass
 
-class BlogPostUpdate(BaseModel):
+class BlogPostTranslationUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     content: Optional[str] = Field(None, min_length=1)
     excerpt: Optional[str] = None
     meta_title: Optional[str] = None
     meta_description: Optional[str] = None
+
+class BlogPostTranslationPublic(BlogPostTranslationBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+# Blog Post Schemas (Main post without language-specific content)
+class BlogPostBase(BaseModel):
+    slug: str = Field(..., min_length=1, max_length=200)
+    author: str = "KGR33N"
+    category: str = "general"
+    featured_image: Optional[str] = None
+
+class BlogPostCreate(BlogPostBase):
+    tags: Optional[List[str]] = []
+    translations: List[BlogPostTranslationCreate] = Field(..., min_items=1)
+
+class BlogPostUpdate(BaseModel):
     category: Optional[str] = None
     is_published: Optional[bool] = None
+    featured_image: Optional[str] = None
     tags: Optional[List[str]] = None
+    translations: Optional[List[BlogPostTranslationCreate]] = None
 
 class BlogPostPublic(BlogPostBase):
     id: int
+    created_at: datetime
+    updated_at: datetime
+    is_published: bool
+    published_at: Optional[datetime]
+    tags: List[str] = []
+    translations: List[BlogPostTranslationPublic] = []
+    
+    class Config:
+        from_attributes = True
+
+class BlogPostAdmin(BlogPostPublic):
+    """Extended schema for admin operations"""
+    author_id: Optional[int] = None
+
+# Single language view for easier frontend consumption
+class BlogPostSingleLanguage(BaseModel):
+    id: int
     slug: str
+    title: str
+    content: str
+    excerpt: Optional[str] = None
+    author: str
+    author_id: Optional[int] = None
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+    language_code: str
+    category: str
+    featured_image: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     is_published: bool
@@ -39,9 +86,28 @@ class BlogPostPublic(BlogPostBase):
     class Config:
         from_attributes = True
 
-class BlogPostAdmin(BlogPostPublic):
-    """Extended schema for admin operations"""
-    author_id: Optional[int] = None  # Include author_id for admin operations
+# Language Schemas
+class LanguageCreate(BaseModel):
+    code: str = Field(..., min_length=2, max_length=10, pattern="^[a-z-]+$")
+    name: str = Field(..., min_length=1, max_length=100)
+    native_name: str = Field(..., min_length=1, max_length=100)
+
+class LanguageUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    native_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    is_active: Optional[bool] = None
+
+class Language(BaseModel):
+    id: int
+    code: str
+    name: str
+    native_name: str
+    is_active: bool
+    created_at: datetime
+    created_by: Optional[int] = None
+    
+    class Config:
+        from_attributes = True
 
 # Contact Schemas
 class ContactForm(BaseModel):
