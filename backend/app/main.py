@@ -6,8 +6,8 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 import os
 import asyncio
-from .database import engine, Base
-from .routers import auth, languages
+from .database import init_default_languages, init_roles_and_ranks
+from .routers import auth, languages, comments, roles
 from .routers import blog_multilingual as blog
 from .security import limiter, get_current_admin_user
 from .schemas import ContactForm, ContactResponse
@@ -15,8 +15,8 @@ from .email_service import EmailService
 from .tasks import run_maintenance_tasks
 import uvicorn
 
-# Create all tables
-Base.metadata.create_all(bind=engine)
+# Usunięto automatyczne tworzenie tabel - używamy Alembic migrations
+# Base.metadata.create_all(bind=engine)
 
 # Get environment
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
@@ -46,10 +46,15 @@ async def periodic_cleanup():
 @app.on_event("startup")
 async def startup_event():
     """Start background tasks when application starts"""
+    # Inicjalizacja danych została przeniesiona do skryptu create_admin.py
+    # Uruchom: docker compose exec web python app/create_admin.py
+    
     if ENVIRONMENT == "production":
         # Only run cleanup tasks in production
         asyncio.create_task(periodic_cleanup())
     print(f"🚀 Portfolio API started in {ENVIRONMENT} mode")
+    print("💡 Aby zainicjalizować dane i utworzyć administratora:")
+    print("   docker compose exec web python app/create_admin.py")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -136,6 +141,8 @@ app.add_middleware(SlowAPIMiddleware)
 app.include_router(blog.router, prefix="/api/blog", tags=["blog"])
 app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(languages.router, prefix="/api/languages", tags=["languages"])
+app.include_router(comments.router, prefix="/api/comments", tags=["comments"])
+app.include_router(roles.router, tags=["roles"])
 
 @app.get("/")
 async def root():

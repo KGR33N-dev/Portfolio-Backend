@@ -229,6 +229,61 @@ class Vote(VoteCreate):
     class Config:
         from_attributes = True
 
+# Comment Schemas
+class CommentCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=2000)
+    parent_id: Optional[int] = None
+
+class CommentUpdate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=2000)
+
+# Author info with role and rank for comments
+class CommentAuthor(BaseModel):
+    id: Optional[int] = None
+    username: str
+    role: Optional["UserRole"] = None
+    rank: Optional["UserRank"] = None
+    
+    class Config:
+        from_attributes = True
+
+class CommentLikeCreate(BaseModel):
+    is_like: bool  # true = like, false = dislike
+
+class Comment(BaseModel):
+    id: int
+    post_id: int
+    user_id: int
+    parent_id: Optional[int] = None
+    content: str
+    is_approved: bool
+    is_deleted: bool
+    author: "CommentAuthor"  # Enhanced author info with role and rank
+    created_at: datetime
+    updated_at: datetime
+    
+    # Computed fields
+    likes_count: Optional[int] = 0
+    dislikes_count: Optional[int] = 0
+    user_like_status: Optional[bool] = None  # null = no like, true = liked, false = disliked
+    replies_count: Optional[int] = 0
+    
+    class Config:
+        from_attributes = True
+
+class CommentWithReplies(Comment):
+    replies: List['CommentWithReplies'] = []
+
+class CommentLike(BaseModel):
+    id: int
+    comment_id: int
+    user_id: int
+    is_like: bool
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
 # API Response Schemas
 class APIResponse(BaseModel):
     success: bool
@@ -241,3 +296,67 @@ class PaginatedResponse(BaseModel):
     page: int
     pages: int
     per_page: int
+
+# 🎯 USER ROLES AND RANKS SCHEMAS
+class UserRoleBase(BaseModel):
+    name: str
+    display_name: str
+    description: Optional[str] = None
+    color: str = "#6c757d"
+    permissions: List[str] = []
+    level: int = 0
+
+class UserRole(UserRoleBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class UserRankBase(BaseModel):
+    name: str
+    display_name: str
+    description: Optional[str] = None
+    icon: str = "👤"
+    color: str = "#28a745"
+    requirements: dict = {}
+    level: int = 0
+
+class UserRank(UserRankBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class UserWithRoleRank(BaseModel):
+    """Rozszerzony model użytkownika z rolą i rangą"""
+    id: int
+    username: str
+    email: str
+    full_name: Optional[str] = None
+    bio: Optional[str] = None
+    is_active: bool
+    
+    # Role and rank info
+    role: Optional[UserRole] = None
+    rank: Optional[UserRank] = None
+    
+    # Statistics
+    total_comments: int = 0
+    total_likes_received: int = 0
+    total_posts: int = 0
+    reputation_score: int = 0
+    
+    # Helper fields (computed)
+    display_role: Optional[str] = None
+    display_rank: Optional[str] = None
+    role_color: Optional[str] = None
+    rank_icon: Optional[str] = None
+    
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True

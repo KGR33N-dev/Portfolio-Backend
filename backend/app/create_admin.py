@@ -1,6 +1,7 @@
+#!/usr/bin/env python3
 """
-Script to create the first admin user for the application
-Run this after setting up the database to create an admin account
+Skrypt do tworzenia administratora i inicjalizacji podstawowych danych
+Uruchom jako: python app/create_admin.py
 """
 
 import sys
@@ -12,16 +13,67 @@ from passlib.context import CryptContext
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import engine, SessionLocal
-from app.models import User, Base
+from app.models import User, UserRole, UserRank, UserRoleEnum, UserRankEnum, Base
 
 # Create password context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def create_admin_user(auto_create=False, username=None, email=None, password=None, full_name=None):
-    """Create the first admin user"""
+def get_admin_input():
+    """Pobiera dane administratora - z ENV lub od użytkownika"""
+    print("\n🔧 Konfiguracja administratora")
+    print("=" * 40)
+    
+    # Check environment variables first
+    username = os.getenv('ADMIN_USERNAME')
+    email = os.getenv('ADMIN_EMAIL') 
+    password = os.getenv('ADMIN_PASSWORD')
+    full_name = os.getenv('ADMIN_FULL_NAME')
+    
+    # If not in environment, ask user
+    if not username:
+        username = input("👤 Username administratora [admin]: ").strip() or "admin"
+    else:
+        print(f"👤 Username (z ENV): {username}")
+        
+    if not email:
+        email = input("📧 Email administratora [admin@example.com]: ").strip() or "admin@example.com"
+    else:
+        print(f"📧 Email (z ENV): {email}")
+        
+    if not password:
+        password = input("🔑 Hasło administratora [admin123]: ").strip() or "admin123"
+    else:
+        print(f"🔑 Hasło (z ENV): {'*' * len(password)}")
+        
+    if not full_name:
+        full_name = input("📝 Pełne imię [Administrator]: ").strip() or "Administrator"
+    else:
+        print(f"📝 Pełne imię (z ENV): {full_name}")
+    
+    return username, email, password, full_name
+
+def create_admin_user():
+    """Create the first admin user with data initialization"""
+    
+    print("🚀 Portfolio Backend - Inicjalizacja administratora")
+    print("=" * 50)
+    
+    print("🏗️  Przygotowywanie bazy danych...")
     
     # Create all tables if they don't exist
     Base.metadata.create_all(bind=engine)
+    
+    # Always initialize basic data
+    print("🌱 Inicjalizacja podstawowych danych...")
+    
+    print("🌍 Inicjalizacja języków...")
+    from app.database import init_roles_and_ranks, init_default_languages
+    init_default_languages()
+    
+    print("👥 Inicjalizacja ról i rang...")
+    init_roles_and_ranks()
+    
+    print("✅ Podstawowe dane zainicjalizowane!")
     
     # Create database session
     db = SessionLocal()
@@ -31,25 +83,19 @@ def create_admin_user(auto_create=False, username=None, email=None, password=Non
         admin_user = db.query(User).filter(User.is_admin == True).first()
         
         if admin_user:
-            print(f"Admin user already exists: {admin_user.username} ({admin_user.email})")
+            print(f"✅ Admin już istnieje: {admin_user.username} ({admin_user.email})")
+            print(f"   Ranga: {admin_user.rank.display_name if admin_user.rank else 'Brak'}")
+            print(f"   Rola: {admin_user.role.display_name if admin_user.role else 'Brak'}")
             return admin_user
         
         # Get admin details
-        print("Creating first admin user...")
+        print("👑 Tworzenie pierwszego administratora...")
         
-        if auto_create and username and email and password:
-            # Use provided credentials for automated deployment
-            print(f"Using provided credentials for user: {username}")
-        else:
-            # Interactive mode
-            username = input("Enter admin username: ").strip()
-            email = input("Enter admin email: ").strip()
-            password = input("Enter admin password: ").strip()
-            full_name = input("Enter full name (optional): ").strip() or None
+        username, email, password, full_name = get_admin_input()
         
         # Validate input
         if not username or not email or not password:
-            print("Username, email, and password are required!")
+            print("❌ Nazwa użytkownika, email i hasło są wymagane!")
             return None
         
         # Check if user with same username or email exists
@@ -58,31 +104,52 @@ def create_admin_user(auto_create=False, username=None, email=None, password=Non
         ).first()
         
         if existing_user:
-            print("User with this username or email already exists!")
+            print("❌ Użytkownik z taką nazwą lub emailem już istnieje!")
             return existing_user
         
         # Hash password
         hashed_password = pwd_context.hash(password)
         
+        # Get admin role and VIP rank (highest rank for admin)
+        admin_role = db.query(UserRole).filter(UserRole.name == UserRoleEnum.ADMIN).first()
+        vip_rank = db.query(UserRank).filter(UserRank.name == UserRankEnum.VIP).first()
+        
+        if not admin_role:
+            print("❌ Rola administratora nie została znaleziona! Upewnij się że inicjalizacja przebiegła pomyślnie.")
+            return None
+            
+        if not vip_rank:
+            print("❌ Ranga VIP nie została znaleziona! Upewnij się że inicjalizacja przebiegła pomyślnie.")
+            # Fallback to any available rank
+            vip_rank = db.query(UserRank).first()
+            if vip_rank:
+                print(f"⚠️  Używam dostępnej rangi: {vip_rank.display_name}")
+        
         # Create admin user
+        print("🔐 Tworzenie konta administratora...")
         admin_user = User(
             username=username,
             email=email,
             hashed_password=hashed_password,
             full_name=full_name,
             is_active=True,
-            is_admin=True
+            is_admin=True,
+            email_verified=True,  # Auto-verify admin email
+            role_id=admin_role.id,  # Przypisz rolę administratora
+            rank_id=vip_rank.id if vip_rank else None  # Przypisz najwyższą rangę
         )
         
         db.add(admin_user)
         db.commit()
         db.refresh(admin_user)
         
-        print(f"✅ Admin user created successfully!")
-        print(f"Username: {admin_user.username}")
-        print(f"Email: {admin_user.email}")
-        print(f"User ID: {admin_user.id}")
-        print("\nYou can now login to the admin panel with these credentials.")
+        print(f"🎉 Konto administratora zostało utworzone pomyślnie!")
+        print(f"👤 Nazwa użytkownika: {admin_user.username}")
+        print(f"📧 Email: {admin_user.email}")
+        print(f"🆔 ID użytkownika: {admin_user.id}")
+        print(f"🏷️  Rola: {admin_role.display_name}")
+        print(f"⭐ Ranga: {vip_rank.display_name if vip_rank else 'Brak'}")
+        print(f"\n🚀 Możesz się teraz zalogować do panelu administracyjnego używając tych danych.")
         
         return admin_user
         
@@ -95,44 +162,10 @@ def create_admin_user(auto_create=False, username=None, email=None, password=Non
 
 def main():
     """Main function for script execution"""
-    import argparse
+    print("🚀 Portfolio Backend - Inicjalizacja systemu")
+    print("=" * 50)
     
-    parser = argparse.ArgumentParser(description='Create admin user for Portfolio Backend')
-    parser.add_argument('--auto', action='store_true', help='Auto-create using environment variables')
-    parser.add_argument('--username', help='Admin username')
-    parser.add_argument('--email', help='Admin email')
-    parser.add_argument('--password', help='Admin password')
-    parser.add_argument('--full-name', help='Admin full name')
-    
-    args = parser.parse_args()
-    
-    if args.auto:
-        # Get credentials from environment variables
-        username = args.username or os.getenv('ADMIN_USERNAME', 'admin')
-        email = args.email or os.getenv('ADMIN_EMAIL', 'admin@kgr33n.com')
-        password = args.password or os.getenv('ADMIN_PASSWORD')
-        full_name = args.full_name or os.getenv('ADMIN_FULL_NAME', 'KGR33N Admin')
-        
-        if not password:
-            print("❌ ADMIN_PASSWORD environment variable is required for auto-creation!")
-            sys.exit(1)
-        
-        user = create_admin_user(
-            auto_create=True,
-            username=username,
-            email=email,
-            password=password,
-            full_name=full_name
-        )
-        
-        if user:
-            print(f"🎉 Auto-created admin user: {user.username}")
-        else:
-            print("❌ Failed to create admin user")
-            sys.exit(1)
-    else:
-        # Interactive mode
-        create_admin_user()
+    create_admin_user()
 
 if __name__ == "__main__":
     main()

@@ -113,13 +113,42 @@ async def update_language(
     
     return language
 
+@router.post("/{language_code}/deactivate", response_model=APIResponse)
+async def deactivate_language(
+    language_code: str,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Dezaktywuj język (admin only)"""
+    
+    language = db.query(Language).filter(Language.code == language_code).first()
+    if not language:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Language with code '{language_code}' not found"
+        )
+    
+    if not language.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Language '{language.name}' is already deactivated"
+        )
+    
+    language.is_active = False
+    db.commit()
+    
+    return APIResponse(
+        success=True,
+        message=f"Language '{language.name}' has been deactivated"
+    )
+
 @router.delete("/{language_code}", response_model=APIResponse)
 async def delete_language(
     language_code: str,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Usuń język (admin only) - tylko dezaktywacja jeśli są posty"""
+    """Usuń język całkowicie (admin only) - tylko jeśli nie ma postów"""
     
     language = db.query(Language).filter(Language.code == language_code).first()
     if not language:
@@ -129,25 +158,23 @@ async def delete_language(
         )
     
     # Check if language is used by any posts
-    from ..models import BlogPost
-    posts_count = db.query(BlogPost).filter(BlogPost.language == language_code).count()
+    from ..models import BlogPostTranslation
+    posts_count = db.query(BlogPostTranslation).filter(BlogPostTranslation.language_code == language_code).count()
     
     if posts_count > 0:
-        # Don't delete, just deactivate
-        language.is_active = False
-        db.commit()
-        return APIResponse(
-            success=True,
-            message=f"Language '{language.name}' has been deactivated (used by {posts_count} posts)"
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete language '{language.name}' - it is used by {posts_count} posts. Use deactivate endpoint instead."
         )
-    else:
-        # Safe to delete
-        db.delete(language)
-        db.commit()
-        return APIResponse(
-            success=True,
-            message=f"Language '{language.name}' has been deleted"
-        )
+    
+    # Safe to delete
+    db.delete(language)
+    db.commit()
+    
+    return APIResponse(
+        success=True,
+        message=f"Language '{language.name}' has been permanently deleted"
+    )
 
 @router.post("/{language_code}/activate", response_model=APIResponse)
 async def activate_language(
@@ -177,7 +204,7 @@ async def get_language_usage_stats(
     db: Session = Depends(get_db)
 ):
     """Pobierz statystyki użycia języków"""
-    from ..models import BlogPost
+    from ..models import BlogPostTranslation
     from sqlalchemy import func
     
     # Get language usage statistics
@@ -186,13 +213,13 @@ async def get_language_usage_stats(
         Language.name,
         Language.native_name,
         Language.is_active,
-        func.count(BlogPost.id).label('posts_count')
+        func.count(BlogPostTranslation.id).label('posts_count')
     ).outerjoin(
-        BlogPost, Language.code == BlogPost.language
+        BlogPostTranslation, Language.code == BlogPostTranslation.language_code
     ).group_by(
         Language.id, Language.code, Language.name, Language.native_name, Language.is_active
     ).order_by(
-        func.count(BlogPost.id).desc()
+        func.count(BlogPostTranslation.id).desc()
     ).all()
     
     return {

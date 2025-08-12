@@ -210,6 +210,33 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """Get current user optionally (returns None if no token provided)"""
+    if not credentials:
+        return None
+    
+    try:
+        payload = verify_token(credentials.credentials, "access")
+        if payload is None:
+            return None
+        
+        user_identifier: str = payload.get("sub")
+        if user_identifier is None:
+            return None
+        
+        # Try to get user by email first, fallback to username
+        user = get_user_by_email(db, user_identifier)
+        if not user:
+            user = get_user_by_username(db, user_identifier)
+            
+        return user if user and user.is_active else None
+        
+    except JWTError:
+        return None
+
 def get_current_admin_user(current_user: User = Depends(get_current_active_user)) -> User:
     """Get current admin user"""
     if not current_user.is_admin:

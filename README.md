@@ -1,53 +1,44 @@
 # 🚀 Portfolio Backend
 
-Nowoczesne REST API zbudowane z FastAPI dla portfolio KGR33N z systemem weryfikacji email i zaawansowanymi funkcjami bezpieczeństwa.
+Nowoczesny backend dla portfolio programisty zbudowany z FastAPI, PostgreSQL i Alembic migrations.
 
-## ✨ Funkcje
+## 🌟 FRESH START - Kompletny przewodnik
+**👉 [FRESH-START.md](FRESH-START.md) - Kompletny przewodnik dla nowych użytkowników**
 
-- 🔐 **System autentykacji JWT** z weryfikacją email
-- 📧 **Weryfikacja email** z 6-cyfrowymi kodami
-- 🛡️ **Zaawansowane bezpieczeństwo** (rate limiting, blokada konta, silne hasła)
-- 📝 **System blogowy** z tagami i kategoriami
-- 🔑 **Klucze API** z konfigurowalnymi uprawnieniami
-- 🐳 **Docker** gotowy do produkcji
-- 📚 **Kompletna dokumentacja** API
-- 🌍 **CORS** skonfigurowany dla frontend
-- ⚡ **Rate limiting** dla ochrony przed nadużyciami
-- 🔄 **Refresh tokeny** dla bezpiecznej sesji
+Jeśli to Twój pierwszy raz lub masz problemy z migracjami, **koniecznie przeczytaj** przewodnik Fresh Start!
 
-## 🛠️ Tech Stack
+## ⚡ Szybki start
 
-- **FastAPI** - Nowoczesny framework web
-- **PostgreSQL** - Baza danych
-- **SQLAlchemy** - ORM
-- **Alembic** - Migracje bazy danych
-- **JWT** - Autentykacja
-- **Bcrypt** - Hashowanie haseł
-- **Docker** - Konteneryzacja
-- **Pydantic** - Walidacja danych
-- **SlowAPI** - Rate limiting
+### 🎯 Dla nowych użytkowników (zero do hero)
 
-## 🚀 Szybki start
-
-### Wymagania
-- Docker & Docker Compose
-- Git
-
-### 1. Klonowanie repozytorium
 ```bash
+# 1. Sklonuj repozytorium
 git clone https://github.com/KGR33N-dev/Portfolio-Backend.git
 cd Portfolio-Backend
-```
 
-### 2. Uruchomienie lokalnie
-```bash
+# 2. Uruchom automatyczny setup (CZYŚCI WSZYSTKO!)
+./setup.sh
+
+# 3. Uruchom aplikację
 cd backend
-chmod +x start-local.sh
-./start-local.sh
+./start-fresh.sh
 ```
 
-### 3. Sprawdzenie czy działa
+**To wszystko!** 🎉 Aplikacja będzie dostępna pod:
+- **API**: http://localhost:8000
+- **Dokumentacja**: http://localhost:8000/api/docs
+- **Frontend**: http://localhost:4321
+
+### 🌩️ Deployment na AWS EC2
+
 ```bash
+# Na nowej instancji EC2 (Ubuntu/Amazon Linux)
+git clone https://github.com/KGR33N-dev/Portfolio-Backend.git
+cd Portfolio-Backend
+./setup.sh
+
+# Aplikacja będzie dostępna pod IP EC2 na porcie 8000
+```
 curl http://localhost:8000/api/health
 ```
 
