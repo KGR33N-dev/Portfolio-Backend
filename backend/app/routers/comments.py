@@ -46,7 +46,7 @@ def build_comment_response(comment: Comment, current_user: Optional[User] = None
             "name": comment.user.role.name if comment.user and comment.user.role else None,
             "display_name": comment.user.role.display_name if comment.user and comment.user.role else None,
             "color": comment.user.role.color if comment.user and comment.user.role else None,
-            "is_staff": comment.user.role.is_staff if comment.user and comment.user.role else False
+            "level": comment.user.role.level if comment.user and comment.user.role else 0,
         } if comment.user and comment.user.role else None,
         "rank": {
             "id": comment.user.rank.id if comment.user and comment.user.rank else None,
@@ -214,20 +214,21 @@ async def update_comment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Edytuj komentarz (tylko własny)"""
+    """Edytuj komentarz - tylko właściciel może edytować swój komentarz (do 15 minut od utworzenia)"""
     
     comment = db.query(Comment).filter(Comment.id == comment_id).first()
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
     
-    # Check ownership
+    # 🔐 SPRAWDZANIE UPRAWNIEŃ DO EDYCJI
+    # Tylko właściciel komentarza może go edytować (moderatorzy i admini NIE mogą edytować cudzych komentarzy)
     if comment.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to edit this comment")
+        raise HTTPException(status_code=403, detail="Możesz edytować tylko swoje komentarze")
     
     # Check if comment is not too old (e.g., 15 minutes edit window)
     from datetime import datetime, timedelta
     if datetime.utcnow() - comment.created_at > timedelta(minutes=15):
-        raise HTTPException(status_code=403, detail="Comment edit time expired")
+        raise HTTPException(status_code=403, detail="Czas na edycję komentarza minął (15 minut)")
     
     comment.content = comment_data.content
     comment.updated_at = datetime.utcnow()
@@ -251,23 +252,46 @@ async def delete_comment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Usuń komentarz (soft delete)"""
+    """Usuń komentarz - właściciel, moderator lub admin (soft delete)"""
     
     comment = db.query(Comment).filter(Comment.id == comment_id).first()
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
     
-    # Check ownership or admin
-    if comment.user_id != current_user.id and not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this comment")
+    # 🔐 SPRAWDZANIE UPRAWNIEŃ DO USUWANIA
+    can_delete = False
+    delete_reason = ""
+    
+    # 1. Właściciel komentarza może go usunąć
+    if comment.user_id == current_user.id:
+        can_delete = True
+        delete_reason = "własny komentarz"
+    
+    # 2. Administrator może usunąć każdy komentarz
+    elif current_user.is_admin or (current_user.role and current_user.role.name == "admin"):
+        can_delete = True
+        delete_reason = "uprawnienia administratora"
+    
+    # 3. Moderator może usunąć każdy komentarz
+    elif current_user.role and current_user.role.name == "moderator":
+        can_delete = True
+        delete_reason = "uprawnienia moderatora"
+    
+    if not can_delete:
+        raise HTTPException(
+            status_code=403, 
+            detail="Nie masz uprawnień do usunięcia tego komentarza. Możesz usuwać tylko swoje komentarze."
+        )
     
     # Soft delete
     comment.is_deleted = True
-    comment.content = "[Komentarz został usunięty]"
     
     db.commit()
     
-    return APIResponse(success=True, message="Comment deleted successfully")
+    return APIResponse(
+        success=True, 
+        message=f"Komentarz został usunięty ({delete_reason})"
+    )
 
 @router.post("/{comment_id}/like", response_model=APIResponse)
 async def like_comment(
@@ -285,6 +309,13 @@ async def like_comment(
     ).first()
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
+    
+    # 🚫 WALIDACJA: Użytkownik nie może polubić własnych komentarzy
+    if comment.user_id == current_user.id:
+        raise HTTPException(
+            status_code=400, 
+            detail="Nie możesz polubić własnego komentarza"
+        )
     
     # Check if user already liked/disliked this comment
     existing_like = db.query(CommentLike).filter(

@@ -148,7 +148,7 @@ class User(Base):
     
     # Permissions and roles
     is_active = Column(Boolean, default=True)
-    is_admin = Column(Boolean, default=False)  # ⚠️ Deprecated - używaj role_id
+    is_admin = Column(Boolean, default=False)  # Backward compatibility
     
     # 🎯 NOWY MODULARNY SYSTEM RÓL I RANG
     role_id = Column(Integer, ForeignKey("user_roles.id"), nullable=True)
@@ -195,9 +195,6 @@ class User(Base):
     # 🎯 UTILITY METHODS dla systemu ról i rang
     def has_permission(self, permission: str) -> bool:
         """Sprawdź czy użytkownik ma określone uprawnienie"""
-        # Backward compatibility
-        if self.is_admin:
-            return True
             
         if self.role and self.role.permissions:
             return permission in self.role.permissions
@@ -207,9 +204,6 @@ class User(Base):
         """Sprawdź czy użytkownik ma określoną rolę"""
         if self.role:
             return self.role.name == role_name
-        # Backward compatibility
-        if role_name == "admin" and self.is_admin:
-            return True
         return False
     
     def get_display_role(self) -> str:

@@ -79,8 +79,13 @@ def create_admin_user():
     db = SessionLocal()
     
     try:
-        # Check if admin user already exists
+        # Check if admin user already exists (by is_admin flag OR admin role)
+        admin_role = db.query(UserRole).filter(UserRole.name == UserRoleEnum.ADMIN).first()
+        
+        # Look for existing admin by flag or role
         admin_user = db.query(User).filter(User.is_admin == True).first()
+        if not admin_user and admin_role:
+            admin_user = db.query(User).filter(User.role_id == admin_role.id).first()
         
         if admin_user:
             print(f"✅ Admin już istnieje: {admin_user.username} ({admin_user.email})")
@@ -110,20 +115,17 @@ def create_admin_user():
         # Hash password
         hashed_password = pwd_context.hash(password)
         
-        # Get admin role and VIP rank (highest rank for admin)
-        admin_role = db.query(UserRole).filter(UserRole.name == UserRoleEnum.ADMIN).first()
-        vip_rank = db.query(UserRank).filter(UserRank.name == UserRankEnum.VIP).first()
+        # admin_role already obtained above
+        # Get highest rank for admin
+        highest_rank = db.query(UserRank).order_by(UserRank.level.desc()).first()
         
         if not admin_role:
             print("❌ Rola administratora nie została znaleziona! Upewnij się że inicjalizacja przebiegła pomyślnie.")
             return None
             
-        if not vip_rank:
-            print("❌ Ranga VIP nie została znaleziona! Upewnij się że inicjalizacja przebiegła pomyślnie.")
-            # Fallback to any available rank
-            vip_rank = db.query(UserRank).first()
-            if vip_rank:
-                print(f"⚠️  Używam dostępnej rangi: {vip_rank.display_name}")
+        if not highest_rank:
+            print("❌ Nie znaleziono żadnych rang! Upewnij się że inicjalizacja przebiegła pomyślnie.")
+            return None
         
         # Create admin user
         print("🔐 Tworzenie konta administratora...")
@@ -133,10 +135,10 @@ def create_admin_user():
             hashed_password=hashed_password,
             full_name=full_name,
             is_active=True,
-            is_admin=True,
+            is_admin=True,  # Backward compatibility
             email_verified=True,  # Auto-verify admin email
             role_id=admin_role.id,  # Przypisz rolę administratora
-            rank_id=vip_rank.id if vip_rank else None  # Przypisz najwyższą rangę
+            rank_id=highest_rank.id if highest_rank else None  # Przypisz najwyższą rangę
         )
         
         db.add(admin_user)
@@ -148,7 +150,7 @@ def create_admin_user():
         print(f"📧 Email: {admin_user.email}")
         print(f"🆔 ID użytkownika: {admin_user.id}")
         print(f"🏷️  Rola: {admin_role.display_name}")
-        print(f"⭐ Ranga: {vip_rank.display_name if vip_rank else 'Brak'}")
+        print(f"⭐ Ranga: {highest_rank.display_name if highest_rank else 'Brak'}")
         print(f"\n🚀 Możesz się teraz zalogować do panelu administracyjnego używając tych danych.")
         
         return admin_user

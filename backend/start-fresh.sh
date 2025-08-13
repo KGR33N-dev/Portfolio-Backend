@@ -49,4 +49,13 @@ echo "✨ Wszystko wyczyszczone!"
 echo "🚀 Uruchamianie z kompletnie czystą bazą danych..."
 
 # Start with clean slate
-$DOCKER_COMPOSE up --build
+$DOCKER_COMPOSE up --build -d
+
+echo "⏳ Czekam aż kontener będzie gotowy..."
+sleep 10
+
+echo "🌱 Inicjalizacja podstawowych danych i tworzenie administratora..."
+$DOCKER_COMPOSE exec web python app/create_admin.py
+
+echo "🎉 Fresh start zakończony! System gotowy do użycia."
+echo "💡 Sprawdź logi: docker compose logs -f web"

@@ -106,6 +106,18 @@ def init_roles_and_ranks():
                     "is_active": True
                 },
                 {
+                    "name": UserRoleEnum.MODERATOR,
+                    "display_name": "Moderator",
+                    "description": "Moderator bloga z uprawnieniami do moderacji",
+                    "color": "#fd7e14",
+                    "permissions": [
+                        "comment.create", "comment.like", "comment.moderate", 
+                        "post.moderate", "user.moderate", "profile.edit"
+                    ],
+                    "level": 50,
+                    "is_active": True
+                },
+                {
                     "name": UserRoleEnum.ADMIN,
                     "display_name": "Administrator",
                     "description": "Administrator bloga z pełnymi uprawnieniami",
@@ -163,6 +175,24 @@ def init_roles_and_ranks():
                     "color": "#ffc107",
                     "requirements": {"comments": 100, "likes": 200},
                     "level": 4
+                },
+                {
+                    "name": UserRankEnum.LEGEND,
+                    "display_name": "🏆 Legenda",
+                    "description": "Legendarny członek społeczności",
+                    "icon": "🏆",
+                    "color": "#6f42c1",
+                    "requirements": {"comments": 500, "likes": 1000},
+                    "level": 5
+                },
+                {
+                    "name": UserRankEnum.VIP,
+                    "display_name": "👑 VIP",
+                    "description": "Najwyższa ranga - VIP społeczności",
+                    "icon": "👑",
+                    "color": "#fd7e14",
+                    "requirements": {"comments": 1000, "likes": 2000},
+                    "level": 6
                 }
             ]
             
