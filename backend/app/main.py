@@ -7,7 +7,7 @@ from slowapi.middleware import SlowAPIMiddleware
 import os
 import asyncio
 from .database import init_default_languages, init_roles_and_ranks
-from .routers import auth, languages, comments, roles
+from .routers import auth, languages, comments, roles, profile
 from .routers import blog_multilingual as blog
 from .security import limiter, get_current_admin_user
 from .schemas import ContactForm, ContactResponse
@@ -143,6 +143,7 @@ app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(languages.router, prefix="/api/languages", tags=["languages"])
 app.include_router(comments.router, prefix="/api/comments", tags=["comments"])
 app.include_router(roles.router, tags=["roles"])
+app.include_router(profile.router, prefix="/api", tags=["profile"])
 
 @app.get("/")
 async def root():

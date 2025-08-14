@@ -36,7 +36,7 @@ def init_roles_and_ranks(db: Session):
     ranks_data = [
         {
             "name": UserRankEnum.NEWBIE,
-            "display_name": "👶 Nowy użytkownik",
+            "display_name": "Nowy użytkownik",
             "description": "Świeżo zarejestrowany użytkownik",
             "icon": "👶",
             "color": "#17a2b8",
@@ -45,7 +45,7 @@ def init_roles_and_ranks(db: Session):
         },
         {
             "name": UserRankEnum.REGULAR,
-            "display_name": "👤 Regularny użytkownik",
+            "display_name": "Regularny użytkownik",
             "description": "Aktywny członek społeczności",
             "icon": "👤",
             "color": "#28a745",
@@ -54,7 +54,7 @@ def init_roles_and_ranks(db: Session):
         },
         {
             "name": UserRankEnum.TRUSTED,
-            "display_name": "🤝 Zaufany użytkownik",
+            "display_name": "Zaufany użytkownik",
             "description": "Doświadczony i zaufany członek",
             "icon": "🤝",
             "color": "#007bff",
@@ -63,7 +63,7 @@ def init_roles_and_ranks(db: Session):
         },
         {
             "name": UserRankEnum.STAR,
-            "display_name": "⭐ Gwiazda społeczności",
+            "display_name": "Gwiazda społeczności",
             "description": "Wybitny członek społeczności",
             "icon": "⭐",
             "color": "#ffc107",

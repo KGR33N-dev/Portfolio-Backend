@@ -256,7 +256,6 @@ class Comment(BaseModel):
     user_id: int
     parent_id: Optional[int] = None
     content: str
-    is_approved: bool
     is_deleted: bool
     author: "CommentAuthor"  # Enhanced author info with role and rank
     created_at: datetime

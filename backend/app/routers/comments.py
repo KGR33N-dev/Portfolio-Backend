@@ -5,11 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_
 from typing import List, Optional
+from datetime import datetime, timedelta
 
 from ..database import get_db
 from ..models import Comment, CommentLike, BlogPost, User
 from ..schemas import CommentCreate, CommentUpdate, CommentLikeCreate, Comment as CommentSchema, CommentWithReplies, APIResponse, PaginatedResponse
 from ..security import get_current_user, get_current_user_optional
+from ..rank_utils import update_user_stats
 
 router = APIRouter()
 
@@ -36,6 +38,25 @@ def build_comment_response(comment: Comment, current_user: Optional[User] = None
     
     # Count replies
     replies_count = len([reply for reply in comment.replies if not reply.is_deleted])
+    
+    # Check permissions for current user
+    can_edit = False
+    can_delete = False
+    
+    if current_user and not comment.is_deleted:
+        # can_edit: tylko właściciel + czas < 15 min
+        if comment.user_id == current_user.id:
+            time_since_creation = datetime.utcnow() - comment.created_at
+            if time_since_creation <= timedelta(minutes=15):
+                can_edit = True
+        
+        # can_delete: właściciel/moderator/admin
+        if comment.user_id == current_user.id:
+            can_delete = True
+        elif current_user.is_admin or (current_user.role and current_user.role.name == "admin"):
+            can_delete = True
+        elif current_user.role and current_user.role.name == "moderator":
+            can_delete = True
     
     # Build author info with role and rank
     author_info = {
@@ -64,7 +85,6 @@ def build_comment_response(comment: Comment, current_user: Optional[User] = None
         "user_id": comment.user_id,
         "parent_id": comment.parent_id,
         "content": comment.content if not comment.is_deleted else "[Komentarz został usunięty]",
-        "is_approved": comment.is_approved,
         "is_deleted": comment.is_deleted,
         "author": author_info,
         "created_at": comment.created_at,
@@ -72,14 +92,15 @@ def build_comment_response(comment: Comment, current_user: Optional[User] = None
         "likes_count": likes_count,
         "dislikes_count": dislikes_count,
         "user_like_status": user_like_status,
-        "replies_count": replies_count
+        "replies_count": replies_count,
+        "can_edit": can_edit,
+        "can_delete": can_delete
     }
     
     if include_replies:
         comment_data["replies"] = [
             build_comment_response(reply, current_user, False) 
             for reply in comment.replies 
-            if reply.is_approved
         ]
     
     return comment_data
@@ -112,8 +133,7 @@ async def get_post_comments(
         joinedload(Comment.replies).joinedload(Comment.user).joinedload(User.rank)
     ).filter(
         Comment.post_id == post_id,
-        Comment.parent_id.is_(None),
-        Comment.is_approved == True
+        Comment.parent_id.is_(None)
     )
     
     # Sorting
@@ -169,8 +189,7 @@ async def create_comment(
     if comment_data.parent_id:
         parent_comment = db.query(Comment).filter(
             Comment.id == comment_data.parent_id,
-            Comment.post_id == post_id,
-            Comment.is_approved == True
+            Comment.post_id == post_id
         ).first()
         if not parent_comment:
             raise HTTPException(status_code=404, detail="Parent comment not found")
@@ -188,13 +207,16 @@ async def create_comment(
         user_id=current_user.id,  # Wymagane - użytkownik musi być zalogowany
         parent_id=comment_data.parent_id,
         content=comment_data.content,
-        ip_address=get_client_ip(request),
-        is_approved=True  # Auto-approve for now, can add moderation later
+        ip_address=get_client_ip(request)
     )
     
     db.add(new_comment)
     db.commit()
     db.refresh(new_comment)
+    
+    # 🎉 AUTOMATYCZNE SPRAWDZENIE AWANSU RANGI
+    # Aktualizuj statystyki użytkownika i sprawdź awans
+    rank_update = update_user_stats(current_user.id, db, "comment")
     
     # Load relationships for response
     # Load comment with all relationships for response
@@ -205,7 +227,12 @@ async def create_comment(
         joinedload(Comment.replies)
     ).filter(Comment.id == new_comment.id).first()
     
-    return build_comment_response(new_comment, current_user)
+    # Dodaj info o awansie do odpowiedzi
+    response = build_comment_response(new_comment, current_user)
+    if rank_update.get("rank_check", {}).get("upgraded"):
+        response["rank_upgrade"] = rank_update["rank_check"]
+    
+    return response
 
 @router.put("/{comment_id}", response_model=dict)
 async def update_comment(
@@ -226,7 +253,6 @@ async def update_comment(
         raise HTTPException(status_code=403, detail="Możesz edytować tylko swoje komentarze")
     
     # Check if comment is not too old (e.g., 15 minutes edit window)
-    from datetime import datetime, timedelta
     if datetime.utcnow() - comment.created_at > timedelta(minutes=15):
         raise HTTPException(status_code=403, detail="Czas na edycję komentarza minął (15 minut)")
     
@@ -304,7 +330,6 @@ async def like_comment(
     
     comment = db.query(Comment).filter(
         Comment.id == comment_id,
-        Comment.is_approved == True,
         Comment.is_deleted == False
     ).first()
     if not comment:
@@ -344,11 +369,26 @@ async def like_comment(
     
     db.commit()
     
+    # 🎉 AUTOMATYCZNE SPRAWDZENIE AWANSU RANGI
+    # Sprawdź awans dla właściciela komentarza jeśli otrzymał lajka
+    rank_update_info = None
+    if like_data.is_like and action in ["added", "updated"]:
+        # Właściciel komentarza otrzymał lajka
+        rank_update = update_user_stats(comment.user_id, db, "like_received")
+        if rank_update.get("rank_check", {}).get("upgraded"):
+            rank_update_info = rank_update["rank_check"]
+    
     like_type = "like" if like_data.is_like else "dislike"
-    return APIResponse(
-        success=True,
-        message=f"Comment {like_type} {action} successfully"
-    )
+    response_data = {
+        "success": True,
+        "message": f"Comment {like_type} {action} successfully"
+    }
+    
+    # Dodaj info o awansie właściciela komentarza
+    if rank_update_info:
+        response_data["comment_author_rank_upgrade"] = rank_update_info
+    
+    return APIResponse(**response_data)
 
 @router.get("/{comment_id}/replies", response_model=List[dict])
 async def get_comment_replies(
@@ -372,8 +412,7 @@ async def get_comment_replies(
         joinedload(Comment.likes),
         joinedload(Comment.replies)
     ).filter(
-        Comment.parent_id == comment_id,
-        Comment.is_approved == True
+        Comment.parent_id == comment_id
     ).order_by(Comment.created_at.asc())
     
     # Pagination
@@ -403,14 +442,12 @@ async def get_post_comment_stats(
     # Get stats
     total_comments = db.query(Comment).filter(
         Comment.post_id == post_id,
-        Comment.is_approved == True,
         Comment.is_deleted == False
     ).count()
     
     total_replies = db.query(Comment).filter(
         Comment.post_id == post_id,
         Comment.parent_id.isnot(None),
-        Comment.is_approved == True,
         Comment.is_deleted == False
     ).count()
     

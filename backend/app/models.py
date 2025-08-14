@@ -50,7 +50,7 @@ class UserRank(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(SQLEnum(UserRankEnum), unique=True, nullable=False, index=True)
-    display_name = Column(String(50), nullable=False)  # "⭐ Gwiazda", "🏆 Legenda"
+    display_name = Column(String(50), nullable=False)  # "Gwiazda", "Legenda"
     description = Column(Text)
     icon = Column(String(10), default="👤")  # Emoji lub CSS class
     color = Column(String(7), default="#28a745")  # Hex color
@@ -289,7 +289,6 @@ class Comment(Base):
     content = Column(Text, nullable=False)
     
     # Moderation
-    is_approved = Column(Boolean, default=True)  # For moderation system
     is_deleted = Column(Boolean, default=False)  # Soft delete
     
     # Tracking

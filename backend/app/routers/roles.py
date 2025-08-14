@@ -9,6 +9,7 @@ from ..database import get_db
 from ..models import User, UserRole, UserRank, UserRoleEnum, UserRankEnum
 from ..schemas import UserRole as UserRoleSchema, UserRank as UserRankSchema, UserWithRoleRank
 from ..security import get_current_user, get_current_admin_user
+from ..rank_utils import auto_check_rank_upgrade
 
 router = APIRouter(prefix="/api/roles", tags=["User Roles & Ranks"])
 
@@ -121,50 +122,19 @@ def check_rank_upgrade(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Sprawdź i automatycznie awansuj rangę użytkownika"""
-    user = db.query(User).options(joinedload(User.rank)).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    """Sprawdź i automatycznie awansuj rangę użytkownika (manualnie)"""
     
-    # Tylko sam użytkownik lub admin
-    if current_user.id != user.id and not current_user.has_permission("user.manage"):
+    # Sprawdź uprawnienia
+    if current_user.id != user_id and not current_user.has_permission("user.manage"):
         raise HTTPException(status_code=403, detail="Not enough permissions")
     
-    # Znajdź najwyższą rangę którą spełnia
-    available_ranks = db.query(UserRank).filter(
-        UserRank.is_active == True
-    ).order_by(UserRank.level.desc()).all()
+    # Użyj funkcji pomocniczej
+    result = auto_check_rank_upgrade(user_id, db)
     
-    upgraded = False
-    new_rank = None
+    if not result["success"]:
+        raise HTTPException(status_code=404, detail=result["message"])
     
-    for rank in available_ranks:
-        requirements = rank.requirements
-        comments_req = requirements.get("comments", 0)
-        likes_req = requirements.get("likes", 0)
-        
-        if (user.total_comments >= comments_req and 
-            user.total_likes_received >= likes_req):
-            if not user.rank or rank.level > user.rank.level:
-                user.rank_id = rank.id
-                new_rank = rank
-                upgraded = True
-                break
-    
-    if upgraded:
-        db.commit()
-        return {
-            "success": True,
-            "upgraded": True,
-            "new_rank": new_rank.display_name,
-            "message": f"🎉 Awansowano na {new_rank.display_name}!"
-        }
-    else:
-        return {
-            "success": True,
-            "upgraded": False,
-            "message": "Brak awansu - kontynuuj aktywność!"
-        }
+    return result
 
 # 🎯 UTILITY ENDPOINTS
 

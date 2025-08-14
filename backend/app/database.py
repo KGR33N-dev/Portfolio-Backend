@@ -142,7 +142,7 @@ def init_roles_and_ranks():
             ranks_data = [
                 {
                     "name": UserRankEnum.NEWBIE,
-                    "display_name": "👶 Nowy użytkownik",
+                    "display_name": "Nowy użytkownik",
                     "description": "Świeżo zarejestrowany użytkownik",
                     "icon": "👶",
                     "color": "#17a2b8",
@@ -151,7 +151,7 @@ def init_roles_and_ranks():
                 },
                 {
                     "name": UserRankEnum.REGULAR,
-                    "display_name": "👤 Regularny użytkownik",
+                    "display_name": "Regularny użytkownik",
                     "description": "Aktywny członek społeczności",
                     "icon": "👤",
                     "color": "#28a745",
@@ -160,7 +160,7 @@ def init_roles_and_ranks():
                 },
                 {
                     "name": UserRankEnum.TRUSTED,
-                    "display_name": "🤝 Zaufany użytkownik",
+                    "display_name": "Zaufany użytkownik",
                     "description": "Doświadczony i zaufany członek",
                     "icon": "🤝",
                     "color": "#007bff",
@@ -169,7 +169,7 @@ def init_roles_and_ranks():
                 },
                 {
                     "name": UserRankEnum.STAR,
-                    "display_name": "⭐ Gwiazda społeczności",
+                    "display_name": "Gwiazda społeczności",
                     "description": "Wybitny członek społeczności",
                     "icon": "⭐",
                     "color": "#ffc107",
@@ -178,7 +178,7 @@ def init_roles_and_ranks():
                 },
                 {
                     "name": UserRankEnum.LEGEND,
-                    "display_name": "🏆 Legenda",
+                    "display_name": "Legenda",
                     "description": "Legendarny członek społeczności",
                     "icon": "🏆",
                     "color": "#6f42c1",
@@ -187,7 +187,7 @@ def init_roles_and_ranks():
                 },
                 {
                     "name": UserRankEnum.VIP,
-                    "display_name": "👑 VIP",
+                    "display_name": "VIP",
                     "description": "Najwyższa ranga - VIP społeczności",
                     "icon": "👑",
                     "color": "#fd7e14",
