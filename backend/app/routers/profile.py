@@ -180,7 +180,7 @@ async def change_email(
     # Zaktualizuj email i ustaw jako niezweryfikowany
     old_email = current_user.email
     current_user.email = request.new_email
-    current_user.is_verified = False  # Wymag ponownej weryfikacji
+    current_user.email_verified = False  # Wymag ponownej weryfikacji
     current_user.verification_token = None
     current_user.verification_expires_at = None
     
@@ -266,7 +266,7 @@ async def get_profile_info(
         "username": current_user.username,
         "email": current_user.email,
         "full_name": current_user.full_name,
-        "is_verified": current_user.is_verified,
+        "is_verified": current_user.email_verified,
         "is_admin": current_user.is_admin,
         "created_at": current_user.created_at,
         "last_login": current_user.last_login,
