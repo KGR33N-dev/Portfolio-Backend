@@ -370,13 +370,13 @@ POST /api/auth/api-keys
   "api_key": {
     "id": 1,
     "name": "Frontend App",
-    "key_preview": "api_EXAMPLE123...",
+    "key_preview": "EXAMPLE123...",
     "permissions": ["read", "write"],
     "created_at": "2025-01-20T10:00:00",
     "expires_at": "2025-02-20T10:00:00",
     "is_active": true
   },
-  "full_key": "api_key_EXAMPLE_1234567890abcdef_REPLACE_WITH_REAL_KEY"
+  "full_key": "api_keH_REAL_KEY"
 }
 ```
 
