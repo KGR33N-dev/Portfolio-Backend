@@ -1,16 +1,16 @@
 """
 Authentication router with email verification system
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
-from ..models import User, APIKey
+from ..models import User, APIKey, UserRole, UserRank, UserRoleEnum, UserRankEnum
 from ..schemas import (
-    UserCreate, UserLogin, UserResponse, Token, User as UserSchema,
+    UserCreate, UserLogin, UserResponse, Token, User as UserSchema, UserWithRoleRank,
     APIKeyCreate, APIKeyResponse, APIKey as APIKeySchema, APIResponse,
     EmailVerificationRequest, EmailVerificationConfirm, PasswordResetRequest,
     PasswordResetConfirm, UserRegistrationRequest
@@ -71,14 +71,15 @@ async def register_user(
                 # Update existing user with new verification data
                 existing_user.verification_code_hash = hash_verification_code(verification_code)
                 existing_user.verification_token = verification_token
-                existing_user.verification_expires_at = datetime.utcnow() + timedelta(minutes=15)
+                existing_user.verification_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
                 
                 db.commit()
                 
-                # Send verification email
+                # Send verification email with user's language preference
                 email_service = EmailService()
+                user_language = email_service.get_user_language_from_request(request)
                 email_result = await email_service.send_verification_email(
-                    user_data.email, verification_code, existing_user.username
+                    user_data.email, verification_code, existing_user.username, user_language
                 )
                 
                 if not email_result.get("success", False):
@@ -105,7 +106,23 @@ async def register_user(
     # Hash password
     hashed_password = get_password_hash(user_data.password)
     
-    # Create new unverified user with account expiration
+    # Get default role and rank for new users
+    default_role = db.query(UserRole).filter(UserRole.name == UserRoleEnum.USER).first()
+    default_rank = db.query(UserRank).filter(UserRank.name == UserRankEnum.NEWBIE).first()
+    
+    if not default_role:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Default user role not found. Please contact administrator."
+        )
+    
+    if not default_rank:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Default user rank not found. Please contact administrator."
+        )
+    
+    # Create new unverified user with role-based system
     db_user = User(
         username=user_data.username,
         email=user_data.email,
@@ -113,22 +130,24 @@ async def register_user(
         full_name=user_data.full_name,
         bio=user_data.bio,
         is_active=False,  # Inactive until email verified
-        is_admin=False,
+        role_id=default_role.id,  # Assign default role
+        rank_id=default_rank.id,  # Assign default rank
         email_verified=False,
         verification_code_hash=hash_verification_code(verification_code),
         verification_token=verification_token,
-        verification_expires_at=datetime.utcnow() + timedelta(minutes=15),
-        account_expires_at=datetime.utcnow() + timedelta(days=1)  # Account expires in 24 hours if not verified
+        verification_expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
+        account_expires_at=datetime.now(timezone.utc) + timedelta(days=1)  # Account expires in 24 hours if not verified
     )
     
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     
-    # Send verification email using EmailService
+    # Send verification email using EmailService with user's language preference
     email_service = EmailService()
+    user_language = email_service.get_user_language_from_request(request)
     email_result = await email_service.send_verification_email(
-        user_data.email, verification_code, user_data.username
+        user_data.email, verification_code, user_data.username, user_language
     )
     
     if not email_result.get("success", False):
@@ -174,7 +193,21 @@ async def verify_email(
         )
     
     # Check if verification code is expired
-    if not user.verification_expires_at or user.verification_expires_at < datetime.utcnow():
+    if not user.verification_expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code expired. Please request a new one."
+        )
+    
+    # Handle timezone comparison safely
+    current_time = datetime.now(timezone.utc)
+    expires_at = user.verification_expires_at
+    
+    # If database datetime is naive, make current time naive for comparison
+    if expires_at.tzinfo is None:
+        current_time = datetime.utcnow()
+    
+    if expires_at < current_time:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification code expired. Please request a new one."
@@ -245,14 +278,15 @@ async def resend_verification_code(
     # Update user verification data
     user.verification_code_hash = hash_verification_code(verification_code)
     user.verification_token = verification_token
-    user.verification_expires_at = datetime.utcnow() + timedelta(minutes=15)
+    user.verification_expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
     
     db.commit()
     
-    # Send verification email using EmailService
+    # Send verification email using EmailService with user's language preference
     email_service = EmailService()
+    user_language = email_service.get_user_language_from_request(request)
     email_result = await email_service.send_verification_email(
-        email_data.email, verification_code, user.username
+        email_data.email, verification_code, user.username, user_language
     )
     
     if not email_result.get("success", False):
@@ -301,8 +335,8 @@ async def login_user(
     
     # Check if account is locked
     if hasattr(user, 'account_locked_until') and user.account_locked_until:
-        if user.account_locked_until > datetime.utcnow():
-            lock_time_remaining = user.account_locked_until - datetime.utcnow()
+        if user.account_locked_until > datetime.now(timezone.utc):
+            lock_time_remaining = user.account_locked_until - datetime.now(timezone.utc)
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,
                 detail=f"Account locked. Try again in {lock_time_remaining.seconds // 60} minutes."
@@ -323,12 +357,19 @@ async def login_user(
         user=UserSchema.from_orm(user)
     )
 
-@router.get("/me", response_model=UserSchema)
+@router.get("/me", response_model=UserWithRoleRank)
 async def get_current_user_info(
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
 ):
-    """Get current user information"""
-    return UserSchema.from_orm(current_user)
+    """Get current user information with role and rank details"""
+    # Fetch user with role and rank relationships
+    user_with_relations = db.query(User).options(
+        joinedload(User.role),
+        joinedload(User.rank)
+    ).filter(User.id == current_user.id).first()
+    
+    return UserWithRoleRank.from_orm(user_with_relations)
 
 @router.post("/password-reset-request", response_model=APIResponse)
 @rate_limit_by_ip(requests=3, period=3600)  # 3 password reset requests per hour
@@ -359,14 +400,15 @@ async def request_password_reset(
     
     # Update user with reset token
     user.password_reset_token = reset_token
-    user.password_reset_expires_at = datetime.utcnow() + timedelta(minutes=30)
+    user.password_reset_expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
     
     db.commit()
     
-    # Send password reset email using EmailService
+    # Send password reset email using EmailService with user's language preference
     email_service = EmailService()
+    user_language = email_service.get_user_language_from_request(request)
     email_result = await email_service.send_password_reset_email(
-        reset_data.email, reset_token, user.username
+        reset_data.email, reset_token, user.username, user_language
     )
     
     if not email_result.get("success", False):
@@ -398,9 +440,14 @@ async def confirm_password_reset(
         )
     
     # Check if reset token is valid and not expired
+    current_time = datetime.now(timezone.utc)
+    if user.password_reset_expires_at and user.password_reset_expires_at.tzinfo is None:
+        # If database datetime is naive, use naive current time for comparison
+        current_time = datetime.utcnow()
+    
     if (not user.password_reset_token or 
         not user.password_reset_expires_at or 
-        user.password_reset_expires_at < datetime.utcnow() or
+        user.password_reset_expires_at < current_time or
         user.password_reset_token != reset_data.reset_token):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -446,7 +493,7 @@ async def create_api_key(
     # Calculate expiration
     expires_at = None
     if api_key_data.expires_days:
-        expires_at = datetime.utcnow() + timedelta(days=api_key_data.expires_days)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=api_key_data.expires_days)
     
     # Create API key record
     db_api_key = APIKey(

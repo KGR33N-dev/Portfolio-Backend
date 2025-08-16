@@ -234,8 +234,24 @@ interface User {
   username: string;
   email: string;
   full_name: string;
-  is_admin: boolean;
   email_verified: boolean;
+  // New role-based system
+  role: {
+    id: number;
+    name: string; // "user" | "admin" | "moderator"
+    display_name: string;
+    color: string;
+    permissions: string[];
+    level: number;
+  } | null;
+  rank: {
+    id: number;
+    name: string; // "newbie" | "regular" | "trusted" | "star" | "legend" | "vip"
+    display_name: string;
+    icon: string;
+    color: string;
+    level: number;
+  } | null;
 }
 
 interface AuthContextType {
@@ -879,6 +895,1019 @@ if (!post) {
 ```
 
 ## 🛠️ Utility Functions
+
+### Permission Checking
+
+```typescript
+// utils/permissions.ts
+interface User {
+  role: {
+    id: number;
+    name: string; // "user" | "admin" | "moderator"
+    display_name: string;
+    color: string;
+    permissions: string[];
+    level: number;
+  } | null;
+  rank: {
+    id: number;
+    name: string;
+    display_name: string;
+    icon: string;
+    color: string;
+    level: number;
+  } | null;
+}
+
+export const permissions = {
+  // Sprawdź czy użytkownik ma konkretną rolę
+  hasRole: (user: User | null, roleName: string): boolean => {
+    return user?.role?.name === roleName;
+  },
+
+  // Sprawdź czy użytkownik jest administratorem
+  isAdmin: (user: User | null): boolean => {
+    return permissions.hasRole(user, 'admin');
+  },
+
+  // Sprawdź czy użytkownik jest moderatorem
+  isModerator: (user: User | null): boolean => {
+    return permissions.hasRole(user, 'moderator');
+  },
+
+  // Sprawdź czy użytkownik ma uprawnienia administratora lub moderatora
+  isAdminOrModerator: (user: User | null): boolean => {
+    return permissions.isAdmin(user) || permissions.isModerator(user);
+  },
+
+  // Sprawdź czy użytkownik ma konkretne uprawnienie
+  hasPermission: (user: User | null, permission: string): boolean => {
+    if (!user?.role?.permissions) return false;
+    return user.role.permissions.includes(permission);
+  },
+
+  // Sprawdź czy użytkownik może edytować posty
+  canEditPosts: (user: User | null): boolean => {
+    return permissions.isAdmin(user) || 
+           permissions.hasPermission(user, 'post.edit');
+  },
+
+  // Sprawdź czy użytkownik może usuwać posty
+  canDeletePosts: (user: User | null): boolean => {
+    return permissions.isAdmin(user) || 
+           permissions.hasPermission(user, 'post.delete');
+  },
+
+  // Sprawdź czy użytkownik może moderować komentarze
+  canModerateComments: (user: User | null): boolean => {
+    return permissions.isAdminOrModerator(user) || 
+           permissions.hasPermission(user, 'comment.moderate');
+  },
+
+  // Sprawdź czy użytkownik może zarządzać użytkownikami
+  canManageUsers: (user: User | null): boolean => {
+    return permissions.isAdmin(user) || 
+           permissions.hasPermission(user, 'user.manage');
+  },
+
+  // Sprawdź czy użytkownik ma wystarczający poziom uprawnień
+  hasMinimumLevel: (user: User | null, minLevel: number): boolean => {
+    return (user?.role?.level ?? 0) >= minLevel;
+  }
+};
+
+// Hook dla React
+export function usePermissions(user: User | null) {
+  return {
+    isAdmin: permissions.isAdmin(user),
+    isModerator: permissions.isModerator(user),
+    isAdminOrModerator: permissions.isAdminOrModerator(user),
+    canEditPosts: permissions.canEditPosts(user),
+    canDeletePosts: permissions.canDeletePosts(user),
+    canModerateComments: permissions.canModerateComments(user),
+    canManageUsers: permissions.canManageUsers(user),
+    hasPermission: (permission: string) => permissions.hasPermission(user, permission),
+    hasRole: (roleName: string) => permissions.hasRole(user, roleName),
+    hasMinimumLevel: (minLevel: number) => permissions.hasMinimumLevel(user, minLevel)
+  };
+}
+```
+
+### Authorization Error Handling
+
+```typescript
+// utils/authErrors.ts
+export class AuthorizationError extends Error {
+  constructor(
+    message: string,
+    public requiredRole?: string,
+    public requiredPermission?: string
+  ) {
+    super(message);
+    this.name = 'AuthorizationError';
+  }
+}
+
+export function handleAuthorizationError(error: any, user: User | null): string {
+  if (error.status === 403 || error.status === 401) {
+    // Sprawdź szczegóły błędu autoryzacji
+    if (error.message?.includes('admin')) {
+      return 'Ta operacja wymaga uprawnień administratora. Skontaktuj się z administratorem systemu.';
+    }
+    
+    if (error.message?.includes('moderator')) {
+      return 'Ta operacja wymaga uprawnień moderatora lub administratora.';
+    }
+
+    if (error.message?.includes('permission')) {
+      return 'Nie masz wymaganych uprawnień do wykonania tej operacji.';
+    }
+
+    // Domyślne komunikaty w zależności od statusu
+    switch (error.status) {
+      case 401:
+        return 'Musisz się zalogować, aby wykonać tę operację.';
+      case 403:
+        return 'Nie masz uprawnień do wykonania tej operacji.';
+      default:
+        return 'Wystąpił błąd autoryzacji.';
+    }
+  }
+  
+  return error.message || 'Wystąpił nieoczekiwany błąd.';
+}
+
+// Komponenty React dla różnych poziomów uprawnień
+export function AdminOnly({ 
+  user, 
+  children, 
+  fallback 
+}: { 
+  user: User | null; 
+  children: React.ReactNode; 
+  fallback?: React.ReactNode;
+}) {
+  if (!permissions.isAdmin(user)) {
+    return fallback || (
+      <div className="text-gray-500 p-4 text-center">
+        Ta funkcja jest dostępna tylko dla administratorów.
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
+export function ModeratorOnly({ 
+  user, 
+  children, 
+  fallback 
+}: { 
+  user: User | null; 
+  children: React.ReactNode; 
+  fallback?: React.ReactNode;
+}) {
+  if (!permissions.isAdminOrModerator(user)) {
+    return fallback || (
+      <div className="text-gray-500 p-4 text-center">
+        Ta funkcja jest dostępna tylko dla moderatorów i administratorów.
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
+export function RequirePermission({ 
+  user, 
+  permission,
+  children, 
+  fallback 
+}: { 
+  user: User | null; 
+  permission: string;
+  children: React.ReactNode; 
+  fallback?: React.ReactNode;
+}) {
+  if (!permissions.hasPermission(user, permission)) {
+    return fallback || (
+      <div className="text-gray-500 p-4 text-center">
+        Brak wymaganych uprawnień: {permission}
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+```
+
+### Protected API Calls
+
+```typescript
+// utils/protectedApi.ts
+import { apiClient } from '../api/client';
+import { handleAuthorizationError } from './authErrors';
+
+export class ProtectedApiClient {
+  constructor(private user: User | null) {}
+
+  // Wrapper dla wywołań API wymagających uprawnień administratora
+  async adminApiCall<T>(
+    apiCall: () => Promise<T>,
+    errorMessage = 'Operacja wymaga uprawnień administratora'
+  ): Promise<T> {
+    if (!permissions.isAdmin(this.user)) {
+      throw new AuthorizationError(errorMessage, 'admin');
+    }
+
+    try {
+      return await apiCall();
+    } catch (error) {
+      const message = handleAuthorizationError(error, this.user);
+      throw new Error(message);
+    }
+  }
+
+  // Wrapper dla wywołań API wymagających uprawnień moderatora
+  async moderatorApiCall<T>(
+    apiCall: () => Promise<T>,
+    errorMessage = 'Operacja wymaga uprawnień moderatora lub administratora'
+  ): Promise<T> {
+    if (!permissions.isAdminOrModerator(this.user)) {
+      throw new AuthorizationError(errorMessage, 'moderator');
+    }
+
+    try {
+      return await apiCall();
+    } catch (error) {
+      const message = handleAuthorizationError(error, this.user);
+      throw new Error(message);
+    }
+  }
+
+  // Wrapper dla wywołań API wymagających konkretnego uprawnienia
+  async permissionApiCall<T>(
+    permission: string,
+    apiCall: () => Promise<T>,
+    errorMessage = `Operacja wymaga uprawnienia: ${permission}`
+  ): Promise<T> {
+    if (!permissions.hasPermission(this.user, permission)) {
+      throw new AuthorizationError(errorMessage, undefined, permission);
+    }
+
+    try {
+      return await apiCall();
+    } catch (error) {
+      const message = handleAuthorizationError(error, this.user);
+      throw new Error(message);
+    }
+  }
+
+  // Metody dla konkretnych operacji
+  async createBlogPost(postData: any) {
+    return this.adminApiCall(
+      () => apiClient.createBlogPost(postData),
+      'Tylko administratorzy mogą tworzyć posty na blogu'
+    );
+  }
+
+  async deleteBlogPost(postId: number) {
+    return this.adminApiCall(
+      () => apiClient.deleteBlogPost(postId),
+      'Tylko administratorzy mogą usuwać posty'
+    );
+  }
+
+  async moderateComment(commentId: number, action: string) {
+    return this.moderatorApiCall(
+      () => apiClient.moderateComment(commentId, action),
+      'Tylko moderatorzy i administratorzy mogą moderować komentarze'
+    );
+  }
+
+  async manageUser(userId: number, userData: any) {
+    return this.permissionApiCall(
+      'user.manage',
+      () => apiClient.updateUser(userId, userData),
+      'Nie masz uprawnień do zarządzania użytkownikami'
+    );
+  }
+}
+
+// Hook dla React
+export function useProtectedApi(user: User | null) {
+  return new ProtectedApiClient(user);
+}
+```
+
+### Practical Usage Examples
+
+```tsx
+// components/AdminPanel.tsx
+import { useAuth } from '../hooks/useAuth';
+import { usePermissions, AdminOnly, ModeratorOnly } from '../utils/permissions';
+import { useProtectedApi } from '../utils/protectedApi';
+
+export function AdminPanel() {
+  const { user } = useAuth();
+  const permissions = usePermissions(user);
+  const protectedApi = useProtectedApi(user);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleDeletePost = async (postId: number) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await protectedApi.deleteBlogPost(postId);
+      // Odśwież listę postów
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Błąd podczas usuwania posta');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleModerateComment = async (commentId: number, action: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await protectedApi.moderateComment(commentId, action);
+      // Odśwież komentarze
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Błąd podczas moderacji');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="admin-panel">
+      <h2>Panel Administracyjny</h2>
+      
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
+      {/* Sekcja tylko dla administratorów */}
+      <AdminOnly user={user}>
+        <div className="mb-6">
+          <h3>Zarządzanie Postami</h3>
+          <button
+            onClick={() => handleDeletePost(123)}
+            disabled={loading}
+            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
+          >
+            {loading ? 'Usuwanie...' : 'Usuń Post'}
+          </button>
+        </div>
+      </AdminOnly>
+
+      {/* Sekcja dla moderatorów i administratorów */}
+      <ModeratorOnly user={user}>
+        <div className="mb-6">
+          <h3>Moderacja Komentarzy</h3>
+          <div className="space-x-2">
+            <button
+              onClick={() => handleModerateComment(456, 'approve')}
+              disabled={loading}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            >
+              Zatwierdź
+            </button>
+            <button
+              onClick={() => handleModerateComment(456, 'reject')}
+              disabled={loading}
+              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+            >
+              Odrzuć
+            </button>
+          </div>
+        </div>
+      </ModeratorOnly>
+
+      {/* Warunkowe wyświetlanie na podstawie uprawnień */}
+      {permissions.canManageUsers && (
+        <div className="mb-6">
+          <h3>Zarządzanie Użytkownikami</h3>
+          <p>Tu będzie lista użytkowników...</p>
+        </div>
+      )}
+
+      {/* Informacja o brakujących uprawnieniach */}
+      {!permissions.isAdminOrModerator && (
+        <div className="text-gray-500 p-4 text-center">
+          Nie masz uprawnień do wyświetlenia tej sekcji.
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+```tsx
+// components/BlogPostEditor.tsx
+import { useAuth } from '../hooks/useAuth';
+import { usePermissions } from '../utils/permissions';
+import { useProtectedApi } from '../utils/protectedApi';
+
+export function BlogPostEditor({ postId }: { postId?: number }) {
+  const { user } = useAuth();
+  const permissions = usePermissions(user);
+  const protectedApi = useProtectedApi(user);
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+    excerpt: '',
+    category: '',
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Sprawdź uprawnienia przed renderowaniem
+  if (!permissions.canEditPosts) {
+    return (
+      <div className="text-center p-8">
+        <h2 className="text-xl font-semibold text-gray-600 mb-4">
+          Brak uprawnień
+        </h2>
+        <p className="text-gray-500">
+          Nie masz uprawnień do edycji postów na blogu.
+        </p>
+        <p className="text-sm text-gray-400 mt-2">
+          Skontaktuj się z administratorem, jeśli uważasz, że to błąd.
+        </p>
+      </div>
+    );
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (postId) {
+        await protectedApi.updateBlogPost(postId, formData);
+      } else {
+        await protectedApi.createBlogPost(formData);
+      }
+      // Przekieruj po sukcesie
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Błąd podczas zapisywania posta');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="max-w-2xl mx-auto p-6">
+      <h2 className="text-2xl font-bold mb-6">
+        {postId ? 'Edytuj Post' : 'Nowy Post'}
+      </h2>
+
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="title" className="block text-sm font-medium mb-1">
+            Tytuł
+          </label>
+          <input
+            type="text"
+            id="title"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            className="w-full p-2 border rounded-md"
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="excerpt" className="block text-sm font-medium mb-1">
+            Skrót
+          </label>
+          <textarea
+            id="excerpt"
+            value={formData.excerpt}
+            onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
+            className="w-full p-2 border rounded-md h-20"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="content" className="block text-sm font-medium mb-1">
+            Treść
+          </label>
+          <textarea
+            id="content"
+            value={formData.content}
+            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+            className="w-full p-2 border rounded-md h-64"
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor="category" className="block text-sm font-medium mb-1">
+            Kategoria
+          </label>
+          <select
+            id="category"
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            className="w-full p-2 border rounded-md"
+          >
+            <option value="">Wybierz kategorię</option>
+            <option value="programming">Programowanie</option>
+            <option value="tutorial">Tutorial</option>
+            <option value="personal">Osobiste</option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? 'Zapisywanie...' : (postId ? 'Aktualizuj Post' : 'Utwórz Post')}
+        </button>
+      </div>
+    </form>
+  );
+}
+```
+
+```tsx
+// components/Navigation.tsx
+import { useAuth } from '../hooks/useAuth';
+import { usePermissions } from '../utils/permissions';
+
+export function Navigation() {
+  const { user, logout } = useAuth();
+  const permissions = usePermissions(user);
+
+  return (
+    <nav className="bg-gray-800 text-white">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center space-x-4">
+            <a href="/" className="text-xl font-bold">Portfolio</a>
+            <a href="/blog" className="hover:text-gray-300">Blog</a>
+            
+            {/* Linki widoczne tylko dla zalogowanych */}
+            {user && (
+              <>
+                <a href="/profile" className="hover:text-gray-300">Profil</a>
+                
+                {/* Linki dla moderatorów i administratorów */}
+                {permissions.isAdminOrModerator && (
+                  <a href="/moderation" className="hover:text-gray-300">Moderacja</a>
+                )}
+                
+                {/* Linki tylko dla administratorów */}
+                {permissions.isAdmin && (
+                  <>
+                    <a href="/admin" className="hover:text-gray-300">Admin</a>
+                    <a href="/blog/new" className="hover:text-gray-300">Nowy Post</a>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center space-x-4">
+            {user ? (
+              <div className="flex items-center space-x-2">
+                <span className="text-sm">
+                  Witaj, {user.username}
+                  {user.role && (
+                    <span 
+                      className="ml-2 px-2 py-1 text-xs rounded"
+                      style={{ backgroundColor: user.role.color, color: 'white' }}
+                    >
+                      {user.role.display_name}
+                    </span>
+                  )}
+                </span>
+                <button
+                  onClick={logout}
+                  className="text-sm hover:text-gray-300"
+                >
+                  Wyloguj
+                </button>
+              </div>
+            ) : (
+              <div className="space-x-2">
+                <a href="/login" className="hover:text-gray-300">Logowanie</a>
+                <a href="/register" className="hover:text-gray-300">Rejestracja</a>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}
+```
+
+### Vue.js Permission Examples
+
+```vue
+<!-- components/AdminSection.vue -->
+<template>
+  <div v-if="permissions.isAdminOrModerator" class="admin-section">
+    <h3>Panel Administracyjny</h3>
+    
+    <!-- Funkcje dla administratorów -->
+    <div v-if="permissions.isAdmin" class="admin-only">
+      <button 
+        @click="deletePost"
+        :disabled="loading"
+        class="btn btn-danger"
+      >
+        {{ loading ? 'Usuwanie...' : 'Usuń Post' }}
+      </button>
+    </div>
+    
+    <!-- Funkcje dla moderatorów i administratorów -->
+    <div v-if="permissions.canModerateComments" class="moderator-tools">
+      <button @click="moderateComment('approve')" class="btn btn-success">
+        Zatwierdź Komentarz
+      </button>
+      <button @click="moderateComment('reject')" class="btn btn-warning">
+        Odrzuć Komentarz
+      </button>
+    </div>
+    
+    <!-- Komunikat o błędzie -->
+    <div v-if="error" class="error-message">
+      {{ error }}
+    </div>
+  </div>
+  
+  <!-- Brak uprawnień -->
+  <div v-else class="no-permissions">
+    <p>Nie masz uprawnień do wyświetlenia tej sekcji.</p>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { useAuth } from '../composables/useAuth';
+import { permissions } from '../utils/permissions';
+
+const { user } = useAuth();
+const loading = ref(false);
+const error = ref<string | null>(null);
+
+const userPermissions = computed(() => ({
+  isAdmin: permissions.isAdmin(user.value),
+  isAdminOrModerator: permissions.isAdminOrModerator(user.value),
+  canModerateComments: permissions.canModerateComments(user.value),
+}));
+
+const deletePost = async () => {
+  if (!permissions.isAdmin(user.value)) {
+    error.value = 'Nie masz uprawnień do usuwania postów.';
+    return;
+  }
+
+  loading.value = true;
+  error.value = null;
+
+  try {
+    // Wywołanie API
+    console.log('Usuwanie posta...');
+  } catch (err) {
+    error.value = 'Błąd podczas usuwania posta.';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const moderateComment = async (action: string) => {
+  if (!permissions.canModerateComments(user.value)) {
+    error.value = 'Nie masz uprawnień do moderacji komentarzy.';
+    return;
+  }
+
+  try {
+    // Wywołanie API
+    console.log(`Moderacja komentarza: ${action}`);
+  } catch (err) {
+    error.value = 'Błąd podczas moderacji komentarza.';
+  }
+};
+</script>
+```
+
+### Route Protection Middleware
+
+```typescript
+// middleware/authMiddleware.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { permissions } from '../utils/permissions';
+
+interface RouteConfig {
+  path: string;
+  requiredRole?: string;
+  requiredPermission?: string;
+  adminOnly?: boolean;
+  moderatorOnly?: boolean;
+}
+
+const protectedRoutes: RouteConfig[] = [
+  { path: '/admin', adminOnly: true },
+  { path: '/blog/new', adminOnly: true },
+  { path: '/blog/edit', adminOnly: true },
+  { path: '/moderation', moderatorOnly: true },
+  { path: '/users/manage', requiredPermission: 'user.manage' },
+];
+
+export function authMiddleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  const user = getUserFromRequest(request); // Implementacja zależna od sposobu przechowywania sesji
+
+  // Znajdź konfigurację dla aktualnej ścieżki
+  const routeConfig = protectedRoutes.find(route => 
+    pathname.startsWith(route.path)
+  );
+
+  if (!routeConfig) {
+    return NextResponse.next(); // Ścieżka nie wymaga autoryzacji
+  }
+
+  // Sprawdź czy użytkownik jest zalogowany
+  if (!user) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // Sprawdź wymagania dotyczące uprawnień
+  if (routeConfig.adminOnly && !permissions.isAdmin(user)) {
+    return NextResponse.redirect(new URL('/unauthorized', request.url));
+  }
+
+  if (routeConfig.moderatorOnly && !permissions.isAdminOrModerator(user)) {
+    return NextResponse.redirect(new URL('/unauthorized', request.url));
+  }
+
+  if (routeConfig.requiredRole && !permissions.hasRole(user, routeConfig.requiredRole)) {
+    return NextResponse.redirect(new URL('/unauthorized', request.url));
+  }
+
+  if (routeConfig.requiredPermission && !permissions.hasPermission(user, routeConfig.requiredPermission)) {
+    return NextResponse.redirect(new URL('/unauthorized', request.url));
+  }
+
+  return NextResponse.next();
+}
+
+function getUserFromRequest(request: NextRequest) {
+  // Tu powinna być implementacja pobierania użytkownika z sesji/tokenu
+  // Na przykład z JWT token w cookies lub headers
+  return null; // Placeholder
+}
+```
+
+```typescript
+// hooks/useRouteProtection.ts (React Router)
+import { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from './useAuth';
+import { permissions } from '../utils/permissions';
+
+interface RouteProtectionConfig {
+  adminOnly?: boolean;
+  moderatorOnly?: boolean;
+  requiredRole?: string;
+  requiredPermission?: string;
+  redirectTo?: string;
+}
+
+export function useRouteProtection(config: RouteProtectionConfig) {
+  const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (isLoading) return; // Czekaj na załadowanie danych użytkownika
+
+    // Sprawdź czy użytkownik jest zalogowany
+    if (!user) {
+      navigate('/login', { 
+        state: { from: location.pathname },
+        replace: true 
+      });
+      return;
+    }
+
+    // Sprawdź wymagania dotyczące uprawnień
+    let hasAccess = true;
+    let errorMessage = '';
+
+    if (config.adminOnly && !permissions.isAdmin(user)) {
+      hasAccess = false;
+      errorMessage = 'Ta strona jest dostępna tylko dla administratorów.';
+    }
+
+    if (config.moderatorOnly && !permissions.isAdminOrModerator(user)) {
+      hasAccess = false;
+      errorMessage = 'Ta strona jest dostępna tylko dla moderatorów i administratorów.';
+    }
+
+    if (config.requiredRole && !permissions.hasRole(user, config.requiredRole)) {
+      hasAccess = false;
+      errorMessage = `Ta strona wymaga roli: ${config.requiredRole}.`;
+    }
+
+    if (config.requiredPermission && !permissions.hasPermission(user, config.requiredPermission)) {
+      hasAccess = false;
+      errorMessage = `Ta strona wymaga uprawnienia: ${config.requiredPermission}.`;
+    }
+
+    if (!hasAccess) {
+      navigate(config.redirectTo || '/unauthorized', {
+        state: { errorMessage, from: location.pathname },
+        replace: true
+      });
+    }
+  }, [user, isLoading, navigate, location.pathname, config]);
+
+  return {
+    isAuthorized: !isLoading && user && (
+      (!config.adminOnly || permissions.isAdmin(user)) &&
+      (!config.moderatorOnly || permissions.isAdminOrModerator(user)) &&
+      (!config.requiredRole || permissions.hasRole(user, config.requiredRole)) &&
+      (!config.requiredPermission || permissions.hasPermission(user, config.requiredPermission))
+    ),
+    isLoading
+  };
+}
+```
+
+```tsx
+// components/ProtectedRoute.tsx
+import { ReactNode } from 'react';
+import { useRouteProtection } from '../hooks/useRouteProtection';
+
+interface ProtectedRouteProps {
+  children: ReactNode;
+  adminOnly?: boolean;
+  moderatorOnly?: boolean;
+  requiredRole?: string;
+  requiredPermission?: string;
+  fallback?: ReactNode;
+}
+
+export function ProtectedRoute({
+  children,
+  adminOnly,
+  moderatorOnly,
+  requiredRole,
+  requiredPermission,
+  fallback
+}: ProtectedRouteProps) {
+  const { isAuthorized, isLoading } = useRouteProtection({
+    adminOnly,
+    moderatorOnly,
+    requiredRole,
+    requiredPermission
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return fallback || (
+      <div className="text-center p-8">
+        <h2 className="text-xl font-semibold text-gray-600 mb-4">
+          Brak dostępu
+        </h2>
+        <p className="text-gray-500">
+          Nie masz uprawnień do wyświetlenia tej strony.
+        </p>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+// Przykład użycia w routingu
+export function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/blog" element={<Blog />} />
+      <Route path="/login" element={<Login />} />
+      
+      {/* Chronione trasy */}
+      <Route 
+        path="/admin/*" 
+        element={
+          <ProtectedRoute adminOnly>
+            <AdminPanel />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/moderation" 
+        element={
+          <ProtectedRoute moderatorOnly>
+            <ModerationPanel />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/blog/new" 
+        element={
+          <ProtectedRoute requiredPermission="post.create">
+            <BlogEditor />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route path="/unauthorized" element={<UnauthorizedPage />} />
+    </Routes>
+  );
+}
+```
+
+### API Response Error Handling
+
+```typescript
+// utils/apiErrorHandler.ts
+export interface ApiErrorResponse {
+  detail: string;
+  status_code: number;
+  error_type?: string;
+  required_role?: string;
+  required_permission?: string;
+}
+
+export function createApiErrorHandler(user: User | null) {
+  return (error: any): string => {
+    // Obsługa błędów autoryzacji z backendu
+    if (error.status === 403) {
+      if (error.detail?.includes('admin')) {
+        return 'Ta operacja wymaga uprawnień administratora.';
+      }
+      
+      if (error.detail?.includes('moderator')) {
+        return 'Ta operacja wymaga uprawnień moderatora.';
+      }
+
+      if (error.detail?.includes('role')) {
+        const requiredRole = extractRequiredRole(error.detail);
+        return `Ta operacja wymaga roli: ${requiredRole}.`;
+      }
+
+      if (error.detail?.includes('permission')) {
+        const requiredPermission = extractRequiredPermission(error.detail);
+        return `Ta operacja wymaga uprawnienia: ${requiredPermission}.`;
+      }
+
+      return 'Nie masz uprawnień do wykonania tej operacji.';
+    }
+
+    if (error.status === 401) {
+      return 'Musisz się zalogować, aby wykonać tę operację.';
+    }
+
+    // Inne błędy API
+    return error.detail || error.message || 'Wystąpił nieoczekiwany błąd.';
+  };
+}
+
+function extractRequiredRole(errorMessage: string): string {
+  const match = errorMessage.match(/role[:\s]+([a-zA-Z_]+)/i);
+  return match ? match[1] : 'unknown';
+}
+
+function extractRequiredPermission(errorMessage: string): string {
+  const match = errorMessage.match(/permission[:\s]+([a-zA-Z_.]+)/i);
+  return match ? match[1] : 'unknown';
+}
+
+// Hook dla React
+export function useApiErrorHandler() {
+  const { user } = useAuth();
+  return createApiErrorHandler(user);
+}
+```
 
 ### Error Handling
 

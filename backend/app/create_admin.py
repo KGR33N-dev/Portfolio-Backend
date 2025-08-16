@@ -79,12 +79,10 @@ def create_admin_user():
     db = SessionLocal()
     
     try:
-        # Check if admin user already exists (by is_admin flag OR admin role)
+        # Check if admin user already exists (by admin role)
         admin_role = db.query(UserRole).filter(UserRole.name == UserRoleEnum.ADMIN).first()
         
-        # Look for existing admin by flag or role
-        admin_user = db.query(User).filter(User.is_admin == True).first()
-        if not admin_user and admin_role:
+        if admin_role:
             admin_user = db.query(User).filter(User.role_id == admin_role.id).first()
         
         if admin_user:
@@ -135,7 +133,6 @@ def create_admin_user():
             hashed_password=hashed_password,
             full_name=full_name,
             is_active=True,
-            is_admin=True,  # Backward compatibility
             email_verified=True,  # Auto-verify admin email
             role_id=admin_role.id,  # Przypisz rolę administratora
             rank_id=highest_rank.id if highest_rank else None  # Przypisz najwyższą rangę

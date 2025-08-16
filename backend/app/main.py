@@ -9,11 +9,15 @@ import asyncio
 from .database import init_default_languages, init_roles_and_ranks
 from .routers import auth, languages, comments, roles, profile
 from .routers import blog_multilingual as blog
-from .security import limiter, get_current_admin_user
+from .security import limiter, get_current_admin_user, conditional_limit
 from .schemas import ContactForm, ContactResponse
 from .email_service import EmailService
 from .tasks import run_maintenance_tasks
 import uvicorn
+import resend
+
+
+resend.api_key = os.environ["RESEND_API_KEY"]
 
 # Usunięto automatyczne tworzenie tabel - używamy Alembic migrations
 # Base.metadata.create_all(bind=engine)
@@ -159,7 +163,7 @@ async def health_check():
     }
 
 @app.post("/api/contact", response_model=ContactResponse)
-@limiter.limit("3/minute")  # Rate limit: 3 requests per minute
+@conditional_limit("3/minute")  # Rate limit: 3 requests per minute (disabled in dev)
 async def send_contact_message(
     request: Request,
     contact_form: ContactForm
@@ -170,12 +174,14 @@ async def send_contact_message(
     try:
         email_service = EmailService()
         
-        # Send contact form email
+        # Send contact form email with user's language preference
+        user_language = email_service.get_user_language_from_request(request)
         success = await email_service.send_contact_form_email(
             name=contact_form.name,
             email=contact_form.email,
             subject=contact_form.subject,
-            message=contact_form.message
+            message=contact_form.message,
+            language=user_language
         )
         
         if success:
@@ -220,6 +226,7 @@ async def manual_cleanup(
             status_code=500,
             detail="Wystąpił błąd podczas uruchamiania zadań czyszczenia."
         )
+
 
 if __name__ == "__main__":
     uvicorn.run(

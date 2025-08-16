@@ -78,7 +78,8 @@ docker-compose -f docker-compose.prod.yml up -d
 ### Autoryzacja
 - **JWT Tokens**: Dla użytkowników webowych (30 min ważności)
 - **API Keys**: Dla aplikacji i integracji (customowy czas ważności)
-- **Role-based**: Admin vs zwykły użytkownik
+- **Role-based**: System modularnych ról (user, admin, moderator) i rang (newbie, regular, trusted, star, legend, vip)
+- **Permission-based**: Granularne uprawnienia per funkcjonalność
 
 ### Endpointy autoryzacji
 ```bash
@@ -106,7 +107,7 @@ GET /api/blog/tags/list          # Lista tagów
 GET /api/health                  # Health check
 ```
 
-### Admin (wymaga JWT + is_admin=True)
+### Admin (wymaga JWT + rola Admin)
 ```bash
 POST   /api/blog/           # Nowy post
 PUT    /api/blog/{id}       # Edycja postu
@@ -245,7 +246,7 @@ python -c "
 from app.database import SessionLocal
 from app.models import User
 db = SessionLocal()
-admin = db.query(User).filter(User.is_admin == True).first()
+admin = db.query(User).filter(User.role = "Admin").first()
 print(f'Admin user: {admin.username if admin else \"Not found\"}')
 "
 

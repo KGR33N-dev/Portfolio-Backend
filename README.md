@@ -155,7 +155,6 @@ admin = User(
     hashed_password=get_password_hash('your-password'),
     full_name='Administrator',
     is_active=True,
-    is_admin=True,
     email_verified=True
 )
 db.add(admin)
@@ -181,6 +180,54 @@ if admin:
 else:
     print('Admin not found!')
 "
+```
+
+## 🎭 System Ról i Rang
+
+### 🏷️ Dostępne Role
+- **USER** (`user`) - Zwykły użytkownik
+  - Uprawnienia: `comment.create`, `comment.like`, `profile.edit`
+  - Kolor: `#6c757d`
+  - Poziom: 1
+
+- **ADMIN** (`admin`) - Administrator
+  - Uprawnienia: wszystkie (pełen dostęp)
+  - Kolor: `#dc3545`
+  - Poziom: 100
+
+### 🏆 Dostępne Rangi
+- **NEWBIE** (`newbie`) - Nowy użytkownik 👶
+  - Wymagania: 0 komentarzy, 0 polubień
+  - Kolor: `#17a2b8`
+  - Poziom: 1
+
+- **REGULAR** (`regular`) - Regularny użytkownik 👤
+  - Wymagania: 10 komentarzy, 5 polubień
+  - Kolor: `#28a745`
+  - Poziom: 2
+
+- **TRUSTED** (`trusted`) - Zaufany użytkownik ⭐
+  - Wymagania: 50 komentarzy, 25 polubień
+  - Kolor: `#ffc107`
+  - Poziom: 3
+
+### 🚀 Automatyczny Upgrade Rang
+System automatycznie podnosi rangi użytkowników na podstawie ich aktywności:
+- Komentarze, polubienia otrzymane, opublikowane posty
+- Obliczany `reputation_score` na podstawie wszystkich działań
+
+### 🔑 Sprawdzanie Uprawnień
+```python
+# W kodzie backend
+if user.role and user.role.permissions:
+    if "post.create" in user.role.permissions:
+        # Użytkownik może tworzyć posty
+        pass
+
+# W frontend (JavaScript/TypeScript) 
+if (user.role?.permissions.includes('post.create')) {
+    // Pokaż przycisk tworzenia posta
+}
 ```
 
 ## 🔧 Konfiguracja

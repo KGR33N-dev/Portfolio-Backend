@@ -603,7 +603,12 @@ interface BlogPostListProps {
   onEdit?: (post: BlogPost) => void;
   onDelete?: (post: BlogPost) => void;
   onTogglePublish?: (post: BlogPost) => void;
-  isAdmin?: boolean;
+  user?: {
+    role?: {
+      name: string;
+      permissions: string[];
+    }
+  };
 }
 
 export function BlogPostList({
@@ -611,8 +616,11 @@ export function BlogPostList({
   onEdit,
   onDelete,
   onTogglePublish,
-  isAdmin = false
+  user
 }: BlogPostListProps) {
+  
+  const isAdmin = user?.role?.name === 'admin';
+  const canEditPosts = user?.role?.permissions.includes('post.edit') || isAdmin;
   
   const handleDelete = (post: BlogPost) => {
     if (window.confirm(`Czy na pewno chcesz usunąć post "${post.title}"?`)) {
@@ -689,7 +697,7 @@ export function BlogPostList({
               )}
             </div>
             
-            {isAdmin && (
+            {canEditPosts && (
               <div className="flex items-center gap-2 ml-4">
                 <a
                   href={`/blog/${post.slug}`}
@@ -784,7 +792,7 @@ export function formatRelativeDate(dateString: string): string {
 ```typescript
 export function handleBlogError(error: any): string {
   if (error.status === 403) {
-    return 'Brak uprawnień administratora';
+    return 'Brak wymaganych uprawnień do tej operacji';
   }
   if (error.status === 404) {
     return 'Post nie został znaleziony';

@@ -6,34 +6,34 @@ from app.database import Base
 
 # Enums for user roles and ranks
 class UserRoleEnum(str, Enum):
-    """Główne role użytkowników"""
-    USER = "user"           # Zwykły użytkownik
-    MODERATOR = "moderator" # Moderator (przyszłość)
+    """Main user roles"""
+    USER = "user"           # Regular user
+    MODERATOR = "moderator" # Moderator (future)
     ADMIN = "admin"         # Administrator
 
 class UserRankEnum(str, Enum):
-    """Rangi/odznaczenia użytkowników"""
-    NEWBIE = "newbie"       # Nowy użytkownik
-    REGULAR = "regular"     # Regularny użytkownik
-    TRUSTED = "trusted"     # Zaufany użytkownik
-    STAR = "star"          # Gwiazda społeczności
-    LEGEND = "legend"      # Legenda (przyszłość)
-    VIP = "vip"           # VIP (przyszłość)
+    """User ranks/badges"""
+    NEWBIE = "newbie"       # New user
+    REGULAR = "regular"     # Regular user
+    TRUSTED = "trusted"     # Trusted user
+    STAR = "star"          # Community star
+    LEGEND = "legend"      # Legend (future)
+    VIP = "vip"           # VIP (future)
 
 class UserRole(Base):
-    """Model dla ról użytkowników - modularny system uprawnień"""
+    """Model for user roles - modular permission system"""
     __tablename__ = "user_roles"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(SQLEnum(UserRoleEnum), unique=True, nullable=False, index=True)
     display_name = Column(String(50), nullable=False)  # "Administrator", "Moderator"
     description = Column(Text)
-    color = Column(String(7), default="#6c757d")  # Hex color dla UI
+    color = Column(String(7), default="#6c757d")  # Hex color for UI
     
-    # Uprawnienia - JSON z listą uprawnień
+    # Permissions - JSON with list of permissions
     permissions = Column(JSON, default=[])
     
-    # Hierarchia - wyższy poziom = więcej uprawnień
+    # Hierarchy - higher level = more permissions
     level = Column(Integer, default=0)
     
     # Status
@@ -45,20 +45,20 @@ class UserRole(Base):
     users = relationship("User", back_populates="role")
 
 class UserRank(Base):
-    """Model dla rang/odznaczeń użytkowników - system gamifikacji"""
+    """Model for user ranks/badges - gamification system"""
     __tablename__ = "user_ranks"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(SQLEnum(UserRankEnum), unique=True, nullable=False, index=True)
-    display_name = Column(String(50), nullable=False)  # "Gwiazda", "Legenda"
+    display_name = Column(String(50), nullable=False)  # "Star", "Legend"
     description = Column(Text)
-    icon = Column(String(10), default="👤")  # Emoji lub CSS class
+    icon = Column(String(10), default="👤")  # Emoji or CSS class
     color = Column(String(7), default="#28a745")  # Hex color
     
-    # Wymagania do uzyskania rangi
+    # Requirements to get this rank
     requirements = Column(JSON, default={})  # {"comments": 100, "likes": 500}
     
-    # Hierarchia rang
+    # Rank hierarchy
     level = Column(Integer, default=0)
     
     # Status
@@ -148,17 +148,16 @@ class User(Base):
     
     # Permissions and roles
     is_active = Column(Boolean, default=True)
-    is_admin = Column(Boolean, default=False)  # Backward compatibility
     
-    # 🎯 NOWY MODULARNY SYSTEM RÓL I RANG
+    # 🎯 NEW MODULAR ROLE AND RANK SYSTEM
     role_id = Column(Integer, ForeignKey("user_roles.id"), nullable=True)
     rank_id = Column(Integer, ForeignKey("user_ranks.id"), nullable=True)
     
-    # Statystyki do automatycznego upgradu rang
+    # Statistics for automatic rank upgrades
     total_comments = Column(Integer, default=0)
     total_likes_received = Column(Integer, default=0)
     total_posts = Column(Integer, default=0)
-    reputation_score = Column(Integer, default=0)  # Ogólny score reputacji
+    reputation_score = Column(Integer, default=0)  # General reputation score
     
     # Email verification
     email_verified = Column(Boolean, default=False)
@@ -192,40 +191,39 @@ class User(Base):
     comments = relationship("Comment", back_populates="user")
     comment_likes = relationship("CommentLike", back_populates="user")
     
-    # 🎯 UTILITY METHODS dla systemu ról i rang
+    # 🎯 UTILITY METHODS for role and rank system
     def has_permission(self, permission: str) -> bool:
-        """Sprawdź czy użytkownik ma określone uprawnienie"""
+        """Check if user has specific permission"""
             
         if self.role and self.role.permissions:
             return permission in self.role.permissions
         return False
     
     def has_role(self, role_name: str) -> bool:
-        """Sprawdź czy użytkownik ma określoną rolę"""
+        """Check if user has specific role"""
         if self.role:
             return self.role.name == role_name
         return False
     
     def get_display_role(self) -> str:
-        """Pobierz czytelną nazwę roli"""
+        """Get readable role name"""
         if self.role:
             return self.role.display_name
-        return "Administrator" if self.is_admin else "Użytkownik"
+        return "User"  # Default role name if not set
     
     def get_display_rank(self) -> str:
-        """Pobierz czytelną nazwę rangi"""
+        """Get readable rank name"""
         if self.rank:
             return self.rank.display_name
-        return "👤 Nowy użytkownik"
-    
+        return "👤 New User"
+
     def get_role_color(self) -> str:
-        """Pobierz kolor roli dla UI"""
+        """Get role color for UI"""
         if self.role:
             return self.role.color
-        return "#dc3545" if self.is_admin else "#6c757d"
     
     def get_rank_icon(self) -> str:
-        """Pobierz ikonę rangi"""
+        """Get rank icon"""
         if self.rank:
             return self.rank.icon
         return "👤"
@@ -248,13 +246,13 @@ class APIKey(Base):
     user = relationship("User", back_populates="api_keys")
 
 class Vote(Base):
-    """Model dla systemu głosowań/ankiet"""
+    """Model for voting/poll system"""
     __tablename__ = "votes"
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
-    poll_name = Column(String(100), nullable=False)  # nazwa ankiety/głosowania
-    option = Column(String(200), nullable=False)     # wybrana opcja
+    poll_name = Column(String(100), nullable=False)  # poll/vote name
+    option = Column(String(200), nullable=False)     # selected option
     created_at = Column(DateTime, server_default=func.now())
     ip_address = Column(String(45))  # For anonymous voting tracking
     
@@ -262,13 +260,13 @@ class Vote(Base):
     user = relationship("User")
 
 class Language(Base):
-    """Model dla dostępnych języków postów"""
+    """Model for available post languages"""
     __tablename__ = "languages"
     
     id = Column(Integer, primary_key=True, index=True)
-    code = Column(String(10), unique=True, nullable=False, index=True)  # np. 'en', 'pl', 'de', 'fr'
-    name = Column(String(100), nullable=False)  # np. 'English', 'Polski', 'Deutsch'
-    native_name = Column(String(100), nullable=False)  # np. 'English', 'Polski', 'Deutsch'
+    code = Column(String(10), unique=True, nullable=False, index=True)  # e.g. 'en', 'pl', 'de', 'fr'
+    name = Column(String(100), nullable=False)  # e.g. 'English', 'Polish', 'German'
+    native_name = Column(String(100), nullable=False)  # e.g. 'English', 'Polski', 'Deutsch'
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
     created_by = Column(Integer, ForeignKey("users.id"))
@@ -277,7 +275,7 @@ class Language(Base):
     creator = relationship("User")
 
 class Comment(Base):
-    """Model dla komentarzy do postów bloga"""
+    """Model for blog post comments"""
     __tablename__ = "comments"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -306,12 +304,12 @@ class Comment(Base):
     likes = relationship("CommentLike", back_populates="comment", cascade="all, delete-orphan")
 
 class CommentLike(Base):
-    """Model dla polubień komentarzy"""
+    """Model for comment likes/dislikes"""
     __tablename__ = "comment_likes"
     
     id = Column(Integer, primary_key=True, index=True)
-    comment_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=False, index=True)  # ⚡ Index dla szybkich zapytań
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)  # ⚡ Index dla szybkich zapytań
+    comment_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=False, index=True)  # ⚡ Index for fast queries
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)  # ⚡ Index for fast queries
     
     # Like type: true = like, false = dislike
     is_like = Column(Boolean, nullable=False)

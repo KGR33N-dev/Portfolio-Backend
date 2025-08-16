@@ -1,9 +1,9 @@
 """
-Email service using Resend for sending emails
+Email service using Resend for sending emails with multi-language support
 """
 import os
 import resend
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -11,8 +11,87 @@ from datetime import datetime
 resend.api_key = os.getenv("RESEND_API_KEY")
 
 # Email configuration from environment
-FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@localhost")
-FROM_NAME = os.getenv("FROM_NAME", "Portfolio KGR33N")
+FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@auth.kgr33n.com")
+
+# Email translations
+EMAIL_TRANSLATIONS = {
+    "pl": {
+        "verification": {
+            "subject": "Weryfikacja adresu email - Portfolio KGR33N",
+            "header": "Weryfikacja adresu email",
+            "greeting": "Cześć {username}!",
+            "message": "Dziękujemy za rejestrację. Aby zweryfikować swój adres email, użyj poniższego kodu:",
+            "code_validity": "Kod jest ważny przez 15 minut.",
+            "verification_link": "Możesz także kliknąć poniższy link, aby przejść bezpośrednio do strony weryfikacji:",
+            "button_text": "Weryfikuj Email",
+            "manual_link": "Jeśli przycisk nie działa, skopiuj i wklej poniższy link do przeglądarki:",
+            "ignore_message": "Jeśli to nie Ty próbowałeś się zarejestrować, zignoruj tę wiadomość.",
+            "footer": "© {year} Portfolio KGR33N. Wszystkie prawa zastrzeżone."
+        },
+        "password_reset": {
+            "subject": "Reset hasła - Portfolio KGR33N",
+            "header": "Reset hasła",
+            "greeting": "Cześć {username}!",
+            "message": "Otrzymaliśmy prośbę o zresetowanie hasła do Twojego konta.",
+            "instruction": "Aby zresetować hasło, kliknij poniższy przycisk:",
+            "button_text": "Resetuj hasło",
+            "warning_title": "Uwaga:",
+            "warning_text": "Link jest ważny przez 1 godzinę. Jeśli to nie Ty prosiłeś o reset hasła, zignoruj tę wiadomość.",
+            "manual_link": "Jeśli przycisk nie działa, skopiuj i wklej poniższy link do przeglądarki:",
+            "footer": "© {year} Portfolio KGR33N. Wszystkie prawa zastrzeżone."
+        },
+        "contact_form": {
+            "subject": "Formularz kontaktowy: {subject}",
+            "header": "Nowa wiadomość z formularza kontaktowego",
+            "field_name": "Imię/Nazwa:",
+            "field_email": "Email:",
+            "field_subject": "Temat:",
+            "field_message": "Wiadomość:",
+            "sent_at": "Wiadomość wysłana"
+        }
+    },
+    "en": {
+        "verification": {
+            "subject": "Email Verification - Portfolio KGR33N",
+            "header": "Email Verification",
+            "greeting": "Hello {username}!",
+            "message": "Thank you for registering. To verify your email address, use the code below:",
+            "code_validity": "The code is valid for 15 minutes.",
+            "verification_link": "You can also click the link below to go directly to the verification page:",
+            "button_text": "Verify Email",
+            "manual_link": "If the button doesn't work, copy and paste the following link into your browser:",
+            "ignore_message": "If you didn't try to register, please ignore this message.",
+            "footer": "© {year} Portfolio KGR33N. All rights reserved."
+        },
+        "password_reset": {
+            "subject": "Password Reset - Portfolio KGR33N",
+            "header": "Password Reset",
+            "greeting": "Hello {username}!",
+            "message": "We received a request to reset your account password.",
+            "instructions": "To reset your password, click the button below:",
+            "button_text": "Reset Password",
+            "warning_title": "Warning",
+            "link_validity": "This link is valid for 1 hour.",
+            "ignore_message": "If you didn't request a password reset, please ignore this message.",
+            "manual_copy": "If the button doesn't work, copy and paste the following link into your browser",
+            "footer": "&copy; {year} Portfolio KGR33N. All rights reserved."
+        },
+        "contact_form": {
+            "subject": "Contact Form: {subject}",
+            "header": "New message from contact form",
+            "field_name": "Name:",
+            "field_email": "Email:",
+            "field_subject": "Subject:",
+            "field_message": "Message:",
+            "sent_at": "Message sent"
+        }
+    }
+}
+
+def get_translation(language: str, email_type: str, key: str) -> str:
+    """Get translation for a specific key"""
+    lang = language if language in EMAIL_TRANSLATIONS else "en"  # Default to English
+    return EMAIL_TRANSLATIONS.get(lang, {}).get(email_type, {}).get(key, "")
 
 class EmailMessage(BaseModel):
     """Email message structure"""
@@ -24,6 +103,26 @@ class EmailMessage(BaseModel):
 
 class EmailService:
     """Service for sending emails using Resend"""
+    
+    @staticmethod
+    def get_user_language_from_request(request=None, user=None) -> str:
+        """Determine user's preferred language from request headers or user preferences"""
+        # Priority: 1. User preference (if user is logged in), 2. Accept-Language header, 3. Default
+        
+        # Check if user has a preferred language (future feature)
+        if user and hasattr(user, 'preferred_language') and user.preferred_language:
+            return user.preferred_language
+        
+        # Check Accept-Language header
+        if request and hasattr(request, 'headers'):
+            accept_language = request.headers.get('Accept-Language', '')
+            if 'pl' in accept_language.lower():
+                return 'pl'
+            elif 'en' in accept_language.lower():
+                return 'en'
+        
+        # Default to Polish (since it's a Polish portfolio)
+        return 'pl'
     
     @staticmethod
     def is_configured() -> bool:
@@ -43,26 +142,24 @@ class EmailService:
             }
         
         try:
-            params = {
-                "from": f"{FROM_NAME} <{FROM_EMAIL}>",
+            # Implementacja zgodna z działającym endpointem
+            params: resend.Emails.SendParams = {
+                "from": FROM_EMAIL,
                 "to": message.to,
                 "subject": message.subject,
                 "html": message.html,
             }
             
-            # Add optional fields
-            if message.text:
-                params["text"] = message.text
-            if message.reply_to:
-                params["reply_to"] = message.reply_to
+            print(f"🚀 Sending email to {message.to} from {FROM_EMAIL}")
             
-            response = resend.Emails.send(params)
+            # Wyślij email - dokładnie jak w działającym endpoincie
+            email: resend.Email = resend.Emails.send(params)
             
-            print(f"✅ Email sent successfully to {message.to}: {response}")
+            print(f"✅ Email sent successfully to {message.to}: {email}")
             return {
                 "success": True,
                 "message": "Email sent successfully",
-                "id": response.get("id", "unknown")
+                "id": str(email) if email else "unknown"
             }
             
         except Exception as e:
@@ -74,14 +171,31 @@ class EmailService:
             }
     
     @staticmethod
-    async def send_verification_email(email: str, verification_code: str, username: str) -> dict:
-        """Send email verification code"""
+    async def send_verification_email(
+        email: str, 
+        verification_code: str, 
+        username: str, 
+        language: str = "pl"
+    ) -> dict:
+        """Send email verification code in specified language"""
+        
+        print(f"🔄 Starting send_verification_email for {email}")
+        
+        # Get translations
+        t = EMAIL_TRANSLATIONS.get(language, EMAIL_TRANSLATIONS["en"])["verification"]
+        
+        print(f"📝 Got translations for language: {language}")
+        
+        # Create verification link
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:4321")
+        verification_link = f"{frontend_url}/{language}/verify-email?email={email}"
+        
         html_content = f"""
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Weryfikacja adresu email</title>
+            <title>{t["subject"]}</title>
             <style>
                 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                 .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
@@ -97,6 +211,25 @@ class EmailService:
                     border-radius: 5px;
                     letter-spacing: 2px;
                 }}
+                .button {{
+                    display: inline-block;
+                    background: #2563eb;
+                    color: white;
+                    padding: 12px 30px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    margin: 20px 0;
+                    font-weight: bold;
+                }}
+                .link {{
+                    color: #2563eb;
+                    word-break: break-all;
+                    font-size: 14px;
+                    background: #f3f4f6;
+                    padding: 10px;
+                    border-radius: 5px;
+                    margin: 10px 0;
+                }}
                 .footer {{ padding: 20px; text-align: center; color: #666; }}
             </style>
         </head>
@@ -104,51 +237,88 @@ class EmailService:
             <div class="container">
                 <div class="header">
                     <h1>Portfolio KGR33N</h1>
-                    <p>Weryfikacja adresu email</p>
+                    <p>{t["header"]}</p>
                 </div>
                 <div class="content">
-                    <h2>Cześć {username}!</h2>
-                    <p>Dziękujemy za rejestrację. Aby zweryfikować swój adres email, użyj poniższego kodu:</p>
+                    <h2>{t["greeting"].format(username=username)}</h2>
+                    <p>{t["message"]}</p>
                     <div class="code">{verification_code}</div>
-                    <p>Kod jest ważny przez 15 minut.</p>
-                    <p>Jeśli to nie Ty próbowałeś się zarejestrować, zignoruj tę wiadomość.</p>
+                    <p>{t["code_validity"]}</p>
+                    
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+                    
+                    <p>{t["verification_link"]}</p>
+                    <div style="text-align: center;">
+                        <a href="{verification_link}" class="button">{t["button_text"]}</a>
+                    </div>
+                    
+                    <p>{t["manual_link"]}</p>
+                    <div class="link">{verification_link}</div>
+                    
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+                    
+                    <p>{t["ignore_message"]}</p>
                 </div>
-                <div class="footer">
-                    <p>&copy; {datetime.now().year} Portfolio KGR33N. Wszystkie prawa zastrzeżone.</p>
-                </div>
+                <div class="footer">{t["footer"].format(year=datetime.now().year)}</div>
             </div>
         </body>
         </html>
         """
         
         text_content = f"""
-        Portfolio KGR33N - Weryfikacja adresu email
+        Portfolio KGR33N - {t["header"]}
         
-        Cześć {username}!
+        {t["greeting"].format(username=username)}
         
-        Dziękujemy za rejestrację. Aby zweryfikować swój adres email, użyj poniższego kodu:
+        {t["message"]}
         
         {verification_code}
         
-        Kod jest ważny przez 15 minut.
+        {t["code_validity"]}
         
-        Jeśli to nie Ty próbowałeś się zarejestrować, zignoruj tę wiadomość.
+        {t["verification_link"]}
+        {verification_link}
         
-        © {datetime.now().year} Portfolio KGR33N. Wszystkie prawa zastrzeżone.
+        {t["ignore_message"]}
+        
+        {t["footer"].format(year=datetime.now().year)}
         """
+        
+        {verification_code}
+        
+        {t["code_validity"]}
+        
+        {t["ignore_message"]}
+        
+        {t["footer"].format(year=datetime.now().year)}
+        
+        print(f"📧 Creating EmailMessage for {email}")
         
         message = EmailMessage(
             to=[email],
-            subject="Weryfikacja adresu email - Portfolio KGR33N",
+            subject=t["subject"],
             html=html_content,
             text=text_content
         )
         
-        return await EmailService.send_email(message)
+        print(f"📤 Calling send_email...")
+        result = await EmailService.send_email(message)
+        print(f"📬 send_email returned: {result}")
+        
+        return result
     
     @staticmethod
-    async def send_password_reset_email(email: str, reset_token: str, username: str) -> dict:
-        """Send password reset email"""
+    async def send_password_reset_email(
+        email: str, 
+        reset_token: str, 
+        username: str, 
+        language: str = "pl"
+    ) -> dict:
+        """Send password reset email in specified language"""
+        
+        # Get translations
+        t = EMAIL_TRANSLATIONS.get(language, EMAIL_TRANSLATIONS["en"])["password_reset"]
+        
         reset_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:4321')}/auth/reset-password?token={reset_token}"
         
         html_content = f"""
@@ -156,7 +326,7 @@ class EmailService:
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Reset hasła</title>
+            <title>{t["subject"]}</title>
             <style>
                 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                 .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
@@ -179,23 +349,23 @@ class EmailService:
             <div class="container">
                 <div class="header">
                     <h1>Portfolio KGR33N</h1>
-                    <p>Reset hasła</p>
+                    <p>{t["header"]}</p>
                 </div>
                 <div class="content">
-                    <h2>Cześć {username}!</h2>
-                    <p>Otrzymaliśmy prośbę o zresetowanie hasła do Twojego konta.</p>
-                    <p>Aby zresetować hasło, kliknij poniższy przycisk:</p>
+                    <h2>{t["greeting"].format(username=username)}</h2>
+                    <p>{t["message"]}</p>
+                    <p>{t["instructions"]}</p>
                     <p style="text-align: center;">
-                        <a href="{reset_url}" class="button">Resetuj hasło</a>
+                        <a href="{reset_url}" class="button">{t["button_text"]}</a>
                     </p>
                     <div class="warning">
-                        <strong>Uwaga:</strong> Link jest ważny przez 1 godzinę. Jeśli to nie Ty prosiłeś o reset hasła, zignoruj tę wiadomość.
+                        <strong>{t["warning_title"]}:</strong> {t["link_validity"]} {t["ignore_message"]}
                     </div>
-                    <p>Jeśli przycisk nie działa, skopiuj i wklej poniższy link do przeglądarki:</p>
+                    <p>{t["manual_copy"]}:</p>
                     <p style="word-break: break-all; color: #666;">{reset_url}</p>
                 </div>
                 <div class="footer">
-                    <p>&copy; {datetime.now().year} Portfolio KGR33N. Wszystkie prawa zastrzeżone.</p>
+                    <p>{t["footer"].format(year=datetime.now().year)}</p>
                 </div>
             </div>
         </body>
@@ -203,23 +373,23 @@ class EmailService:
         """
         
         text_content = f"""
-        Portfolio KGR33N - Reset hasła
+        Portfolio KGR33N - {t["header"]}
         
-        Cześć {username}!
+        {t["greeting"].format(username=username)}
         
-        Otrzymaliśmy prośbę o zresetowanie hasła do Twojego konta.
+        {t["message"]}
         
-        Aby zresetować hasło, odwiedź poniższy link:
+        {t["instructions"]}
         {reset_url}
         
-        UWAGA: Link jest ważny przez 1 godzinę. Jeśli to nie Ty prosiłeś o reset hasła, zignoruj tę wiadomość.
+        {t["warning_title"]}: {t["link_validity"]} {t["ignore_message"]}
         
-        © {datetime.now().year} Portfolio KGR33N. Wszystkie prawa zastrzeżone.
+        {t["footer"].format(year=datetime.now().year)}
         """
         
         message = EmailMessage(
             to=[email],
-            subject="Reset hasła - Portfolio KGR33N",
+            subject=t["subject"],
             html=html_content,
             text=text_content
         )
@@ -227,8 +397,18 @@ class EmailService:
         return await EmailService.send_email(message)
     
     @staticmethod
-    async def send_contact_form_email(name: str, email: str, subject: str, message: str) -> dict:
-        """Send contact form email"""
+    async def send_contact_form_email(
+        name: str, 
+        email: str, 
+        subject: str, 
+        message: str, 
+        language: str = "pl"
+    ) -> dict:
+        """Send contact form email in specified language"""
+        
+        # Get translations
+        t = EMAIL_TRANSLATIONS.get(language, EMAIL_TRANSLATIONS["en"])["contact_form"]
+        
         admin_email = os.getenv("ADMIN_EMAIL", FROM_EMAIL)
         
         html_content = f"""
@@ -236,7 +416,7 @@ class EmailService:
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Nowa wiadomość z formularza kontaktowego</title>
+            <title>{t["header"]}</title>
             <style>
                 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                 .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
@@ -252,27 +432,27 @@ class EmailService:
             <div class="container">
                 <div class="header">
                     <h1>Portfolio KGR33N</h1>
-                    <p>Nowa wiadomość z formularza kontaktowego</p>
+                    <p>{t["header"]}</p>
                 </div>
                 <div class="content">
                     <div class="field">
-                        <div class="label">Imię/Nazwa:</div>
+                        <div class="label">{t["field_name"]}</div>
                         <div class="value">{name}</div>
                     </div>
                     <div class="field">
-                        <div class="label">Email:</div>
+                        <div class="label">{t["field_email"]}</div>
                         <div class="value">{email}</div>
                     </div>
                     <div class="field">
-                        <div class="label">Temat:</div>
+                        <div class="label">{t["field_subject"]}</div>
                         <div class="value">{subject}</div>
                     </div>
                     <div class="field">
-                        <div class="label">Wiadomość:</div>
+                        <div class="label">{t["field_message"]}</div>
                         <div class="message-content">{message.replace(chr(10), '<br>')}</div>
                     </div>
                     <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                        Wiadomość wysłana: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                        {t["sent_at"]}: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                     </p>
                 </div>
             </div>
@@ -282,9 +462,37 @@ class EmailService:
         
         message_obj = EmailMessage(
             to=[admin_email],
-            subject=f"Formularz kontaktowy: {subject}",
+            subject=t["subject"].format(subject=subject),
             html=html_content,
             reply_to=email
         )
         
         return await EmailService.send_email(message_obj)
+
+    @staticmethod
+    async def send_test_email(to_email: str) -> dict:
+        """Send simple test email to verify configuration"""
+        try:
+            params = {
+                "from": FROM_EMAIL,
+                "to": [to_email],
+                "subject": "Test Email - Portfolio KGR33N",
+                "html": "<strong>Test email działa!</strong><p>Email service jest poprawnie skonfigurowany.</p>",
+            }
+            
+            response = resend.Emails.send(params)
+            
+            print(f"✅ Test email sent successfully to {to_email}: {response}")
+            return {
+                "success": True,
+                "message": "Test email sent successfully",
+                "id": str(response) if response else "unknown"
+            }
+            
+        except Exception as e:
+            print(f"❌ Failed to send test email to {to_email}: {str(e)}")
+            return {
+                "success": False,
+                "message": f"Failed to send test email: {str(e)}",
+                "id": None
+            }

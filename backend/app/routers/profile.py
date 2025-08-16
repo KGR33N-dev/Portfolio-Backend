@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from ..database import get_db
-from ..models import User
+from ..models import User, UserRoleEnum
 from ..schemas import APIResponse
 from ..security import (
     get_current_user, verify_password, get_password_hash, 
@@ -218,7 +218,7 @@ async def delete_account(
         )
     
     # Dodatkowa ochrona - nie pozwól usunąć konta administratora
-    if current_user.is_admin or (current_user.role and current_user.role.name == "admin"):
+    if current_user.role and current_user.role.name == UserRoleEnum.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Nie można usunąć konta administratora. Skontaktuj się z innym administratorem."
@@ -267,7 +267,6 @@ async def get_profile_info(
         "email": current_user.email,
         "full_name": current_user.full_name,
         "is_verified": current_user.email_verified,
-        "is_admin": current_user.is_admin,
         "created_at": current_user.created_at,
         "last_login": current_user.last_login,
         "total_comments": current_user.total_comments,

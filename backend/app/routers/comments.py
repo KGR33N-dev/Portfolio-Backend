@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from ..database import get_db
-from ..models import Comment, CommentLike, BlogPost, User
+from ..models import Comment, CommentLike, BlogPost, User, UserRoleEnum
 from ..schemas import CommentCreate, CommentUpdate, CommentLikeCreate, Comment as CommentSchema, CommentWithReplies, APIResponse, PaginatedResponse
 from ..security import get_current_user, get_current_user_optional
 from ..rank_utils import update_user_stats
@@ -46,16 +46,16 @@ def build_comment_response(comment: Comment, current_user: Optional[User] = None
     if current_user and not comment.is_deleted:
         # can_edit: tylko właściciel + czas < 15 min
         if comment.user_id == current_user.id:
-            time_since_creation = datetime.utcnow() - comment.created_at
+            time_since_creation = datetime.now(timezone.utc) - comment.created_at
             if time_since_creation <= timedelta(minutes=15):
                 can_edit = True
         
         # can_delete: właściciel/moderator/admin
         if comment.user_id == current_user.id:
             can_delete = True
-        elif current_user.is_admin or (current_user.role and current_user.role.name == "admin"):
+        elif current_user.role and current_user.role.name == UserRoleEnum.ADMIN:
             can_delete = True
-        elif current_user.role and current_user.role.name == "moderator":
+        elif current_user.role and current_user.role.name == UserRoleEnum.MODERATOR:
             can_delete = True
     
     # Build author info with role and rank
@@ -253,11 +253,11 @@ async def update_comment(
         raise HTTPException(status_code=403, detail="Możesz edytować tylko swoje komentarze")
     
     # Check if comment is not too old (e.g., 15 minutes edit window)
-    if datetime.utcnow() - comment.created_at > timedelta(minutes=15):
+    if datetime.now(timezone.utc) - comment.created_at > timedelta(minutes=15):
         raise HTTPException(status_code=403, detail="Czas na edycję komentarza minął (15 minut)")
     
     comment.content = comment_data.content
-    comment.updated_at = datetime.utcnow()
+    comment.updated_at = datetime.now(timezone.utc)
     
     db.commit()
     db.refresh(comment)
@@ -294,12 +294,12 @@ async def delete_comment(
         delete_reason = "własny komentarz"
     
     # 2. Administrator może usunąć każdy komentarz
-    elif current_user.is_admin or (current_user.role and current_user.role.name == "admin"):
+    elif current_user.role and current_user.role.name == UserRoleEnum.ADMIN:
         can_delete = True
         delete_reason = "uprawnienia administratora"
     
     # 3. Moderator może usunąć każdy komentarz
-    elif current_user.role and current_user.role.name == "moderator":
+    elif current_user.role and current_user.role.name == UserRoleEnum.MODERATOR:
         can_delete = True
         delete_reason = "uprawnienia moderatora"
     

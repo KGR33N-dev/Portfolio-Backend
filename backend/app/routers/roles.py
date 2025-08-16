@@ -79,12 +79,6 @@ def assign_user_role(
     
     user.role_id = role.id
     
-    # Aktualizuj legacy is_admin field
-    if role.name == UserRoleEnum.ADMIN:
-        user.is_admin = True
-    else:
-        user.is_admin = False
-    
     db.commit()
     
     return {

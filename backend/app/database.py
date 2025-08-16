@@ -41,17 +41,17 @@ def get_db():
         db.close()
 
 def init_default_languages():
-    """Inicjalizuje domyślne języki w systemie"""
+    """Initialize default languages in the system"""
     from app.models import Language
     
     db = SessionLocal()
     try:
-        # Sprawdź czy już istnieją języki
+        # Check if languages already exist
         existing_count = db.query(Language).count()
         if existing_count > 0:
-            return  # Języki już istnieją
+            return  # Languages already exist
         
-        # Dodaj domyślne języki
+        # Add default languages
         default_languages = [
             {
                 "code": "en",
@@ -72,34 +72,34 @@ def init_default_languages():
             db.add(language)
         
         db.commit()
-        print("✅ Zainicjalizowano domyślne języki: English, Polski")
+        print("✅ Initialized default languages: English, Polish")
         
     except Exception as e:
-        print(f"❌ Błąd podczas inicjalizacji języków: {e}")
+        print(f"❌ Error during languages initialization: {e}")
         db.rollback()
     finally:
         db.close()
 
 def init_roles_and_ranks():
-    """Inicjalizuje domyślne role i rangi w systemie"""
+    """Initialize default roles and ranks in the system"""
     from app.models import UserRole, UserRank, UserRoleEnum, UserRankEnum
     
     db = SessionLocal()
     try:
-        # Sprawdź czy już istnieją role
+        # Check if roles and ranks already exist
         existing_roles = db.query(UserRole).count()
         existing_ranks = db.query(UserRank).count()
         
         if existing_roles > 0 and existing_ranks > 0:
-            return  # Role i rangi już istnieją
+            return  # Roles and ranks already exist
         
-        # 🎯 ROLE UŻYTKOWNIKÓW
+        # 🎯 USER ROLES
         if existing_roles == 0:
             roles_data = [
                 {
                     "name": UserRoleEnum.USER,
-                    "display_name": "Użytkownik",
-                    "description": "Zwykły użytkownik bloga",
+                    "display_name": "User",
+                    "description": "Regular blog user",
                     "color": "#6c757d",
                     "permissions": ["comment.create", "comment.like", "profile.edit"],
                     "level": 1,
@@ -108,7 +108,7 @@ def init_roles_and_ranks():
                 {
                     "name": UserRoleEnum.MODERATOR,
                     "display_name": "Moderator",
-                    "description": "Moderator bloga z uprawnieniami do moderacji",
+                    "description": "Blog moderator with moderation permissions",
                     "color": "#fd7e14",
                     "permissions": [
                         "comment.create", "comment.like", "comment.moderate", 
@@ -120,7 +120,7 @@ def init_roles_and_ranks():
                 {
                     "name": UserRoleEnum.ADMIN,
                     "display_name": "Administrator",
-                    "description": "Administrator bloga z pełnymi uprawnieniami",
+                    "description": "Blog administrator with full permissions",
                     "color": "#dc3545",
                     "permissions": [
                         "comment.create", "comment.like", "comment.moderate", "comment.delete",
@@ -135,15 +135,15 @@ def init_roles_and_ranks():
             for role_data in roles_data:
                 role = UserRole(**role_data)
                 db.add(role)
-            print("✅ Zainicjalizowano domyślne role")
+            print("✅ Initialized default roles")
         
-        # 🏆 RANGI UŻYTKOWNIKÓW
+        # 🏆 USER RANKS
         if existing_ranks == 0:
             ranks_data = [
                 {
                     "name": UserRankEnum.NEWBIE,
-                    "display_name": "Nowy użytkownik",
-                    "description": "Świeżo zarejestrowany użytkownik",
+                    "display_name": "New User",
+                    "description": "Newly registered user",
                     "icon": "👶",
                     "color": "#17a2b8",
                     "requirements": {"comments": 0, "likes": 0},
@@ -151,8 +151,8 @@ def init_roles_and_ranks():
                 },
                 {
                     "name": UserRankEnum.REGULAR,
-                    "display_name": "Regularny użytkownik",
-                    "description": "Aktywny członek społeczności",
+                    "display_name": "Regular User",
+                    "description": "Active community member",
                     "icon": "👤",
                     "color": "#28a745",
                     "requirements": {"comments": 5, "likes": 10},
@@ -160,8 +160,8 @@ def init_roles_and_ranks():
                 },
                 {
                     "name": UserRankEnum.TRUSTED,
-                    "display_name": "Zaufany użytkownik",
-                    "description": "Doświadczony i zaufany członek",
+                    "display_name": "Trusted User",
+                    "description": "Experienced and trusted member",
                     "icon": "🤝",
                     "color": "#007bff",
                     "requirements": {"comments": 25, "likes": 50},
@@ -169,8 +169,8 @@ def init_roles_and_ranks():
                 },
                 {
                     "name": UserRankEnum.STAR,
-                    "display_name": "Gwiazda społeczności",
-                    "description": "Wybitny członek społeczności",
+                    "display_name": "Community Star",
+                    "description": "Outstanding community member",
                     "icon": "⭐",
                     "color": "#ffc107",
                     "requirements": {"comments": 100, "likes": 200},
@@ -178,8 +178,8 @@ def init_roles_and_ranks():
                 },
                 {
                     "name": UserRankEnum.LEGEND,
-                    "display_name": "Legenda",
-                    "description": "Legendarny członek społeczności",
+                    "display_name": "Legend",
+                    "description": "Legendary community member",
                     "icon": "🏆",
                     "color": "#6f42c1",
                     "requirements": {"comments": 500, "likes": 1000},
@@ -188,7 +188,7 @@ def init_roles_and_ranks():
                 {
                     "name": UserRankEnum.VIP,
                     "display_name": "VIP",
-                    "description": "Najwyższa ranga - VIP społeczności",
+                    "description": "Highest rank - VIP community member",
                     "icon": "👑",
                     "color": "#fd7e14",
                     "requirements": {"comments": 1000, "likes": 2000},
@@ -199,12 +199,12 @@ def init_roles_and_ranks():
             for rank_data in ranks_data:
                 rank = UserRank(**rank_data)
                 db.add(rank)
-            print("✅ Zainicjalizowano domyślne rangi")
+            print("✅ Initialized default ranks")
         
         db.commit()
         
     except Exception as e:
-        print(f"❌ Błąd podczas inicjalizacji ról i rang: {e}")
+        print(f"❌ Error during roles and ranks initialization: {e}")
         db.rollback()
     finally:
         db.close()

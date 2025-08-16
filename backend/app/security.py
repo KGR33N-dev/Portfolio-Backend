@@ -1,7 +1,7 @@
 """
 Security module for JWT authentication and authorization
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Union, Optional
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -16,7 +16,7 @@ import hashlib
 import os
 
 from .database import get_db
-from .models import User, APIKey
+from .models import User, APIKey, UserRoleEnum
 from .schemas import Token
 
 # Security configuration
@@ -38,6 +38,17 @@ security = HTTPBearer()
 # Rate limiting setup
 limiter = Limiter(key_func=get_remote_address)
 
+# Environment configuration
+ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
+IS_DEVELOPMENT = ENVIRONMENT in ["development", "dev", "local"]
+
+# Environment-aware limiter for direct usage
+def conditional_limit(rate_string: str):
+    """Apply rate limit only in non-development environments"""
+    if IS_DEVELOPMENT:
+        return lambda func: func  # No-op decorator in development
+    return limiter.limit(rate_string)
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against its hash"""
     return pwd_context.verify(plain_password, hashed_password)
@@ -50,14 +61,14 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     """Create a JWT access token with enhanced security"""
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
     # Add additional security claims
     to_encode.update({
         "exp": expire,
-        "iat": datetime.utcnow(),  # Issued at
+        "iat": datetime.now(timezone.utc),  # Issued at
         "jti": secrets.token_urlsafe(16),  # JWT ID for token revocation
         "type": "access"  # Token type
     })
@@ -70,8 +81,8 @@ def create_refresh_token(user_id: int) -> str:
     data = {
         "sub": str(user_id),
         "type": "refresh",
-        "exp": datetime.utcnow() + timedelta(days=7),  # 7 days
-        "iat": datetime.utcnow(),
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),  # 7 days
+        "iat": datetime.now(timezone.utc),
         "jti": secrets.token_urlsafe(16)
     }
     return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
@@ -87,7 +98,7 @@ def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
             
         # Check if token is expired
         exp = payload.get("exp")
-        if exp and datetime.utcfromtimestamp(exp) < datetime.utcnow():
+        if exp and datetime.fromtimestamp(exp, timezone.utc) < datetime.now(timezone.utc):
             return None
             
         return payload
@@ -114,7 +125,7 @@ def handle_failed_login(db: Session, email: str) -> None:
         
         # Lock account after 5 failed attempts for 30 minutes
         if user.failed_login_attempts >= 5:
-            user.account_locked_until = datetime.utcnow() + timedelta(minutes=30)
+            user.account_locked_until = datetime.now(timezone.utc) + timedelta(minutes=30)
         
         db.commit()
 
@@ -155,7 +166,7 @@ def authenticate_user(db: Session, email: str, password: str) -> Union[User, boo
     
     # Check if account is locked
     if hasattr(user, 'account_locked_until') and user.account_locked_until:
-        if user.account_locked_until > datetime.utcnow():
+        if user.account_locked_until > datetime.now(timezone.utc):
             return False
         else:
             # Unlock account if lock period has expired
@@ -165,7 +176,7 @@ def authenticate_user(db: Session, email: str, password: str) -> Union[User, boo
     # Reset failed login attempts on successful login
     if hasattr(user, 'failed_login_attempts'):
         user.failed_login_attempts = 0
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(timezone.utc)
         db.commit()
     
     return user
@@ -238,8 +249,9 @@ def get_current_user_optional(
         return None
 
 def get_current_admin_user(current_user: User = Depends(get_current_active_user)) -> User:
-    """Get current admin user"""
-    if not current_user.is_admin:
+    """Get current admin user - checks role-based permissions"""
+    # Check if user has admin role
+    if not current_user.role or current_user.role.name != UserRoleEnum.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -263,9 +275,9 @@ def verify_api_key(db: Session, api_key: str) -> Optional[APIKey]:
         APIKey.is_active == True
     ).first()
     
-    if api_key_obj and (api_key_obj.expires_at is None or api_key_obj.expires_at > datetime.utcnow()):
+    if api_key_obj and (api_key_obj.expires_at is None or api_key_obj.expires_at > datetime.now(timezone.utc)):
         # Update last used timestamp
-        api_key_obj.last_used = datetime.utcnow()
+        api_key_obj.last_used = datetime.now(timezone.utc)
         db.commit()
         return api_key_obj
     return None
@@ -291,8 +303,12 @@ def require_permission(permission: str):
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_active_user)
     ):
-        # Check if user is admin (admins have all permissions)
-        if current_user.is_admin:
+        # Check if user has admin role (admins have all permissions)
+        if current_user.role and current_user.role.name == UserRoleEnum.ADMIN:
+            return current_user
+        
+        # Check user role permissions
+        if current_user.role and current_user.role.permissions and permission in current_user.role.permissions:
             return current_user
         
         # Check API key permissions
@@ -311,24 +327,34 @@ def require_permission(permission: str):
 
 # Rate limiting decorators with enhanced security
 def rate_limit_by_key(requests: int = 100, period: int = 3600):
-    """Rate limit by API key"""
+    """Rate limit by API key - disabled in development"""
+    if IS_DEVELOPMENT:
+        return lambda func: func  # No-op decorator in development
     return limiter.limit(f"{requests}/{period}second")
 
 def rate_limit_by_ip(requests: int = 50, period: int = 3600):
-    """Rate limit by IP address"""
+    """Rate limit by IP address - disabled in development"""
+    if IS_DEVELOPMENT:
+        return lambda func: func  # No-op decorator in development
     return limiter.limit(f"{requests}/{period}second")
 
 def strict_rate_limit_login(requests: int = 5, period: int = 900):
-    """Strict rate limiting for login attempts (5 attempts per 15 minutes)"""
+    """Strict rate limiting for login attempts (5 attempts per 15 minutes) - disabled in development"""
+    if IS_DEVELOPMENT:
+        return lambda func: func  # No-op decorator in development
     return limiter.limit(f"{requests}/{period}second")
 
 def rate_limit_password_reset(requests: int = 3, period: int = 3600):
-    """Rate limit password reset requests (3 per hour)"""
+    """Rate limit password reset requests (3 per hour) - disabled in development"""
+    if IS_DEVELOPMENT:
+        return lambda func: func  # No-op decorator in development
     return limiter.limit(f"{requests}/{period}second")
 
 # Admin rate limits (more permissive)
 def admin_rate_limit(requests: int = 1000, period: int = 3600):
-    """Higher rate limits for admin operations"""
+    """Higher rate limits for admin operations - disabled in development"""
+    if IS_DEVELOPMENT:
+        return lambda func: func  # No-op decorator in development
     return limiter.limit(f"{requests}/{period}second")
 
 # Security headers and CSRF protection
@@ -375,8 +401,8 @@ def create_verification_token(email: str, verification_code: str) -> str:
         "email": email,
         "code": verification_code,
         "type": "email_verification",
-        "exp": datetime.utcnow() + timedelta(minutes=15),  # 15 minutes expiry
-        "iat": datetime.utcnow(),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=15),  # 15 minutes expiry
+        "iat": datetime.now(timezone.utc),
         "jti": secrets.token_urlsafe(16)
     }
     return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
@@ -392,7 +418,7 @@ def verify_verification_token(token: str) -> Optional[dict]:
             
         # Check if token is expired
         exp = payload.get("exp")
-        if exp and datetime.utcfromtimestamp(exp) < datetime.utcnow():
+        if exp and datetime.fromtimestamp(exp, timezone.utc) < datetime.now(timezone.utc):
             return None
             
         return payload
@@ -400,12 +426,15 @@ def verify_verification_token(token: str) -> Optional[dict]:
         return None
 
 def hash_verification_code(code: str) -> str:
-    """Hash verification code for storage"""
-    return hashlib.sha256(code.encode()).hexdigest()
+    """Hash verification code for storage using bcrypt (secure)"""
+    return pwd_context.hash(code)
 
 def verify_verification_code(plain_code: str, hashed_code: str) -> bool:
-    """Verify verification code against hash"""
-    return secrets.compare_digest(hash_verification_code(plain_code), hashed_code)
+    """Verify verification code against bcrypt hash"""
+    try:
+        return pwd_context.verify(plain_code, hashed_code)
+    except Exception:
+        return False
 
 # Email sending functionality using Resend
 async def send_verification_email(email: str, verification_code: str, verification_token: str) -> bool:

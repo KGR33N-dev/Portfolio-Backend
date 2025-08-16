@@ -155,9 +155,24 @@ username=user@example.com&password=your_password
     "full_name": "Test User",
     "bio": null,
     "is_active": true,
-    "is_admin": false,
     "email_verified": true,
-    "created_at": "2025-01-20T10:00:00"
+    "created_at": "2025-01-20T10:00:00",
+    "role": {
+      "id": 1,
+      "name": "user",
+      "display_name": "Użytkownik",
+      "color": "#6c757d",
+      "permissions": ["comment.create", "comment.like", "profile.edit"],
+      "level": 1
+    },
+    "rank": {
+      "id": 1,
+      "name": "newbie",
+      "display_name": "Nowy użytkownik",
+      "icon": "👶",
+      "color": "#17a2b8",
+      "level": 1
+    }
   }
 }
 ```
@@ -199,9 +214,24 @@ Authorization: Bearer <access_token>
   "full_name": "Test User",
   "bio": "My bio",
   "is_active": true,
-  "is_admin": false,
   "email_verified": true,
-  "created_at": "2025-01-20T10:00:00"
+  "created_at": "2025-01-20T10:00:00",
+  "role": {
+    "id": 1,
+    "name": "user",
+    "display_name": "Użytkownik",
+    "color": "#6c757d",
+    "permissions": ["comment.create", "comment.like", "profile.edit"],
+    "level": 1
+  },
+  "rank": {
+    "id": 1,
+    "name": "newbie",
+    "display_name": "Nowy użytkownik",
+    "icon": "👶",
+    "color": "#17a2b8",
+    "level": 1
+  }
 }
 ```
 
@@ -377,9 +407,24 @@ DELETE /api/auth/api-keys/{id}
   "full_name": "string | null",
   "bio": "string | null",
   "is_active": "boolean",
-  "is_admin": "boolean", 
   "email_verified": "boolean",
-  "created_at": "datetime"
+  "created_at": "datetime",
+  "role": {
+    "id": "integer",
+    "name": "string", // "user" | "admin" | "moderator"
+    "display_name": "string",
+    "color": "string",
+    "permissions": "array[string]",
+    "level": "integer"
+  },
+  "rank": {
+    "id": "integer", 
+    "name": "string", // "newbie" | "regular" | "trusted" | "star" | "legend" | "vip"
+    "display_name": "string",
+    "icon": "string",
+    "color": "string",
+    "level": "integer"
+  }
 }
 ```
 
@@ -613,10 +658,15 @@ W przypadku problemów lub pytań:
 
 #### Wymagane uprawnienia
 ```typescript
-// Sprawdzenie czy użytkownik jest adminem
+// Sprawdzenie czy użytkownik ma uprawnienia administratora
 const user = await apiClient.getProfile();
-if (!user.is_admin) {
+if (!user.role || user.role.name !== 'admin') {
   throw new Error('Admin permissions required');
+}
+
+// Alternatywnie sprawdzenie przez konkretne uprawnienie
+if (!user.role.permissions.includes('post.create')) {
+  throw new Error('Permission to create posts required');
 }
 ```
 
@@ -730,7 +780,7 @@ async function getPostForEdit(id: number) {
     
     // Sprawdź czy użytkownik może edytować
     const user = await apiClient.getProfile();
-    if (!user.is_admin) {
+    if (!user.role || user.role.name !== 'admin') {
       throw new Error('Tylko admin może edytować posty');
     }
     

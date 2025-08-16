@@ -2,7 +2,7 @@
 Background tasks for application maintenance
 """
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from .database import SessionLocal
 from .models import User
@@ -21,7 +21,7 @@ async def cleanup_expired_accounts():
         expired_accounts = db.query(User).filter(
             User.email_verified == False,
             User.account_expires_at.isnot(None),
-            User.account_expires_at < datetime.utcnow()
+            User.account_expires_at < datetime.now(timezone.utc)
         ).all()
         
         if expired_accounts:
@@ -52,7 +52,7 @@ async def cleanup_expired_verification_codes():
         # Find users with expired verification codes
         expired_verifications = db.query(User).filter(
             User.verification_expires_at.isnot(None),
-            User.verification_expires_at < datetime.utcnow()
+            User.verification_expires_at < datetime.now(timezone.utc)
         ).all()
         
         if expired_verifications:
@@ -83,7 +83,7 @@ async def cleanup_expired_password_resets():
         # Find users with expired password reset tokens
         expired_resets = db.query(User).filter(
             User.password_reset_expires_at.isnot(None),
-            User.password_reset_expires_at < datetime.utcnow()
+            User.password_reset_expires_at < datetime.now(timezone.utc)
         ).all()
         
         if expired_resets:

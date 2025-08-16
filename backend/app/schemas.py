@@ -175,7 +175,6 @@ class UserRegistrationRequest(BaseModel):
 class User(UserBase):
     id: int
     is_active: bool
-    is_admin: bool
     email_verified: bool
     created_at: datetime
     
@@ -331,13 +330,15 @@ class UserRank(UserRankBase):
         from_attributes = True
 
 class UserWithRoleRank(BaseModel):
-    """Rozszerzony model użytkownika z rolą i rangą"""
+    """Extended user model with role and rank information"""
     id: int
     username: str
     email: str
     full_name: Optional[str] = None
     bio: Optional[str] = None
     is_active: bool
+    email_verified: bool
+    created_at: datetime
     
     # Role and rank info
     role: Optional[UserRole] = None
@@ -354,8 +355,6 @@ class UserWithRoleRank(BaseModel):
     display_rank: Optional[str] = None
     role_color: Optional[str] = None
     rank_icon: Optional[str] = None
-    
-    created_at: datetime
     
     class Config:
         from_attributes = True
