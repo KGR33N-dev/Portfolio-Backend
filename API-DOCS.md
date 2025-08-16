@@ -370,13 +370,13 @@ POST /api/auth/api-keys
   "api_key": {
     "id": 1,
     "name": "Frontend App",
-    "key_preview": "sk_live_abc123...",
+    "key_preview": "api_EXAMPLE123...",
     "permissions": ["read", "write"],
     "created_at": "2025-01-20T10:00:00",
     "expires_at": "2025-02-20T10:00:00",
     "is_active": true
   },
-  "full_key": "sk_live_abc123def456ghi789jkl012mno345pqr678stu901vwx234"
+  "full_key": "api_key_EXAMPLE_1234567890abcdef_REPLACE_WITH_REAL_KEY"
 }
 ```
 
@@ -597,7 +597,7 @@ curl -X POST "http://localhost:8000/api/auth/api-keys" \
 #### Użycie klucza API
 ```bash
 curl -X GET "http://localhost:8000/api/blog/" \
-  -H "X-API-Key: sk_live_abc123def456..."
+  -H "X-API-Key: YOUR_API_KEY_HERE"
 ```
 
 ---
