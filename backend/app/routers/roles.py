@@ -46,11 +46,17 @@ def get_user_role_rank(
     ).filter(User.id == user_id).first()
     
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "USER_NOT_FOUND", "message": "User not found"}
+        )
     
     # Tylko admin lub sam użytkownik może zobaczyć szczegóły
     if current_user.id != user.id and not current_user.has_permission("user.manage"):
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+        raise HTTPException(
+            status_code=403, 
+            detail={"translation_code": "INSUFFICIENT_PERMISSIONS", "message": "Not enough permissions"}
+        )
     
     # Dodaj computed fields
     user_data = UserWithRoleRank.from_orm(user)
@@ -71,11 +77,17 @@ def assign_user_role(
     """Przypisz rolę użytkownikowi (tylko admin)"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "USER_NOT_FOUND", "message": "User not found"}
+        )
     
     role = db.query(UserRole).filter(UserRole.name == role_name).first()
     if not role:
-        raise HTTPException(status_code=404, detail="Role not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "ROLE_NOT_FOUND", "message": "Role not found"}
+        )
     
     user.role_id = role.id
     
@@ -96,11 +108,17 @@ def assign_user_rank(
     """Przypisz rangę użytkownikowi (tylko admin)"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "USER_NOT_FOUND", "message": "User not found"}
+        )
     
     rank = db.query(UserRank).filter(UserRank.name == rank_name).first()
     if not rank:
-        raise HTTPException(status_code=404, detail="Rank not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "RANK_NOT_FOUND", "message": "Rank not found"}
+        )
     
     user.rank_id = rank.id
     db.commit()
@@ -120,13 +138,19 @@ def check_rank_upgrade(
     
     # Sprawdź uprawnienia
     if current_user.id != user_id and not current_user.has_permission("user.manage"):
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+        raise HTTPException(
+            status_code=403, 
+            detail={"translation_code": "INSUFFICIENT_PERMISSIONS", "message": "Not enough permissions"}
+        )
     
     # Użyj funkcji pomocniczej
     result = auto_check_rank_upgrade(user_id, db)
     
     if not result["success"]:
-        raise HTTPException(status_code=404, detail=result["message"])
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "USER_NOT_FOUND", "message": result["message"]}
+        )
     
     return result
 

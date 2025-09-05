@@ -46,21 +46,21 @@ async def change_password(
     if request.new_password != request.confirm_password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nowe hasła nie są identyczne"
+            detail={"translation_code": "PASSWORD_MISMATCH", "message": "Nowe hasła nie są identyczne"}
         )
     
     # Sprawdź obecne hasło
     if not verify_password(request.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowe obecne hasło"
+            detail={"translation_code": "INVALID_CURRENT_PASSWORD", "message": "Nieprawidłowe obecne hasło"}
         )
     
     # Sprawdź czy nowe hasło nie jest takie same jak obecne
     if verify_password(request.new_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nowe hasło musi być różne od obecnego"
+            detail={"translation_code": "SAME_PASSWORD", "message": "Nowe hasło musi być różne od obecnego"}
         )
     
     # Sprawdź siłę nowego hasła
@@ -68,7 +68,7 @@ async def change_password(
     if not is_strong:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Hasło jest za słabe: {message}"
+            detail={"translation_code": "WEAK_PASSWORD", "message": f"Hasło jest za słabe: {message}"}
         )
     
     # Zaktualizuj hasło
@@ -80,6 +80,8 @@ async def change_password(
     
     return APIResponse(
         success=True,
+        type="success",
+        translation_code="PASSWORD_CHANGED",
         message="Hasło zostało pomyślnie zmienione"
     )
 
@@ -95,14 +97,14 @@ async def change_username(
     if not verify_password(request.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowe hasło"
+            detail={"translation_code": "INVALID_CURRENT_PASSWORD", "message": "Nieprawidłowe hasło"}
         )
     
     # Sprawdź czy nowy username nie jest taki sam jak obecny
     if request.new_username.lower() == current_user.username.lower():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nowy username musi być różny od obecnego"
+            detail={"translation_code": "SAME_USERNAME", "message": "Nowy username musi być różny od obecnego"}
         )
     
     # 🔍 WERYFIKACJA UNIKALNOŚCI USERNAME
@@ -114,7 +116,7 @@ async def change_username(
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ten username jest już zajęty"
+            detail={"translation_code": "USERNAME_EXISTS", "message": "Ten username jest już zajęty"}
         )
     
     # Sprawdź format username (tylko litery, cyfry, podkreślniki, myślniki)
@@ -122,7 +124,7 @@ async def change_username(
     if not re.match(r'^[a-zA-Z0-9_-]+$', request.new_username):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username może zawierać tylko litery, cyfry, podkreślniki i myślniki"
+            detail={"translation_code": "INVALID_USERNAME_FORMAT", "message": "Username może zawierać tylko litery, cyfry, podkreślniki i myślniki"}
         )
     
     # Zaktualizuj username
@@ -133,6 +135,8 @@ async def change_username(
     
     return APIResponse(
         success=True,
+        type="success",
+        translation_code="USERNAME_CHANGED",
         message=f"Username został zmieniony z '{old_username}' na '{request.new_username}'"
     )
 
@@ -148,21 +152,21 @@ async def change_email(
     if not verify_password(request.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowe hasło"
+            detail={"translation_code": "INVALID_CURRENT_PASSWORD", "message": "Nieprawidłowe hasło"}
         )
     
     # Sprawdź format email
     if not is_email_valid(request.new_email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowy format email"
+            detail={"translation_code": "INVALID_EMAIL_FORMAT", "message": "Nieprawidłowy format email"}
         )
     
     # Sprawdź czy nowy email nie jest taki sam jak obecny
     if request.new_email.lower() == current_user.email.lower():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nowy email musi być różny od obecnego"
+            detail={"translation_code": "SAME_EMAIL", "message": "Nowy email musi być różny od obecnego"}
         )
     
     # 🔍 WERYFIKACJA UNIKALNOŚCI EMAIL
@@ -174,7 +178,7 @@ async def change_email(
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ten email jest już używany przez inne konto"
+            detail={"translation_code": "EMAIL_EXISTS", "message": "Ten email jest już używany przez inne konto"}
         )
     
     # Zaktualizuj email i ustaw jako niezweryfikowany
@@ -188,6 +192,8 @@ async def change_email(
     
     return APIResponse(
         success=True,
+        type="success",
+        translation_code="EMAIL_CHANGED",
         message=f"Email został zmieniony z '{old_email}' na '{request.new_email}'. Wymagana jest ponowna weryfikacja.",
         data={"requires_verification": True}
     )
@@ -207,21 +213,21 @@ async def delete_account(
     if not verify_password(request.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowe hasło"
+            detail={"translation_code": "INVALID_CURRENT_PASSWORD", "message": "Nieprawidłowe hasło"}
         )
     
     # Sprawdź potwierdzenie
     if request.confirmation != "DELETE_MY_ACCOUNT":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nieprawidłowe potwierdzenie. Wpisz dokładnie: DELETE_MY_ACCOUNT"
+            detail={"translation_code": "INVALID_CONFIRMATION", "message": "Nieprawidłowe potwierdzenie. Wpisz dokładnie: DELETE_MY_ACCOUNT"}
         )
     
     # Dodatkowa ochrona - nie pozwól usunąć konta administratora
     if current_user.role and current_user.role.name == UserRoleEnum.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nie można usunąć konta administratora. Skontaktuj się z innym administratorem."
+            detail={"translation_code": "ADMIN_DELETE_FORBIDDEN", "message": "Nie można usunąć konta administratora. Skontaktuj się z innym administratorem."}
         )
     
     # Zapisz informacje przed usunięciem (dla logów)
@@ -245,6 +251,8 @@ async def delete_account(
         
         return APIResponse(
             success=True,
+            type="success",
+            translation_code="ACCOUNT_DELETED",
             message=f"Konto '{deleted_username}' zostało permanentnie usunięte. Dziękujemy za korzystanie z naszej platformy."
         )
         
@@ -252,7 +260,7 @@ async def delete_account(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Wystąpił błąd podczas usuwania konta. Spróbuj ponownie lub skontaktuj się z pomocą techniczną."
+            detail={"translation_code": "ACCOUNT_DELETE_ERROR", "message": "Wystąpił błąd podczas usuwania konta. Spróbuj ponownie lub skontaktuj się z pomocą techniczną."}
         )
 
 @router.get("/", response_model=dict)

@@ -51,7 +51,7 @@ async def get_language(
     if not language:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Language with code '{language_code}' not found"
+            detail={"translation_code": "LANGUAGE_NOT_FOUND", "message": f"Language with code '{language_code}' not found"}
         )
     
     return language
@@ -69,7 +69,7 @@ async def create_language(
     if existing_language:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Language with code '{language_data.code}' already exists"
+            detail={"translation_code": "LANGUAGE_EXISTS", "message": f"Language with code '{language_data.code}' already exists"}
         )
     
     # Create new language
@@ -99,7 +99,7 @@ async def update_language(
     if not language:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Language with code '{language_code}' not found"
+            detail={"translation_code": "LANGUAGE_NOT_FOUND", "message": f"Language with code '{language_code}' not found"}
         )
     
     # Update fields if provided
@@ -125,13 +125,13 @@ async def deactivate_language(
     if not language:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Language with code '{language_code}' not found"
+            detail={"translation_code": "LANGUAGE_NOT_FOUND", "message": f"Language with code '{language_code}' not found"}
         )
     
     if not language.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Language '{language.name}' is already deactivated"
+            detail={"translation_code": "LANGUAGE_ALREADY_INACTIVE", "message": f"Language '{language.name}' is already deactivated"}
         )
     
     language.is_active = False
@@ -139,6 +139,8 @@ async def deactivate_language(
     
     return APIResponse(
         success=True,
+        type="success",
+        translation_code="LANGUAGE_DEACTIVATED",
         message=f"Language '{language.name}' has been deactivated"
     )
 
@@ -154,7 +156,7 @@ async def delete_language(
     if not language:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Language with code '{language_code}' not found"
+            detail={"translation_code": "LANGUAGE_NOT_FOUND", "message": f"Language with code '{language_code}' not found"}
         )
     
     # Check if language is used by any posts
@@ -164,7 +166,7 @@ async def delete_language(
     if posts_count > 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot delete language '{language.name}' - it is used by {posts_count} posts. Use deactivate endpoint instead."
+            detail={"translation_code": "LANGUAGE_IN_USE", "message": f"Cannot delete language '{language.name}' - it is used by {posts_count} posts. Use deactivate endpoint instead."}
         )
     
     # Safe to delete
@@ -173,6 +175,8 @@ async def delete_language(
     
     return APIResponse(
         success=True,
+        type="success",
+        translation_code="LANGUAGE_DELETED",
         message=f"Language '{language.name}' has been permanently deleted"
     )
 
@@ -188,7 +192,7 @@ async def activate_language(
     if not language:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Language with code '{language_code}' not found"
+            detail={"translation_code": "LANGUAGE_NOT_FOUND", "message": f"Language with code '{language_code}' not found"}
         )
     
     language.is_active = True
@@ -196,6 +200,8 @@ async def activate_language(
     
     return APIResponse(
         success=True,
+        type="success",
+        translation_code="LANGUAGE_ACTIVATED",
         message=f"Language '{language.name}' has been activated"
     )
 

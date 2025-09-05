@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 
 from ..database import get_db
@@ -186,7 +186,10 @@ async def update_blog_post(
     ).filter(BlogPost.id == post_id).first()
     
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "POST_NOT_FOUND", "message": "Post not found"}
+        )
     
     # Update main post fields
     update_data = post_update.dict(exclude={'translations', 'tags'}, exclude_unset=True)
@@ -197,7 +200,7 @@ async def update_blog_post(
     if hasattr(post_update, 'is_published') and post_update.is_published is not None:
         if post_update.is_published and not post.is_published:
             # Publishing for the first time
-            post.published_at = datetime.utcnow()
+            post.published_at = datetime.now(timezone.utc)
         elif not post_update.is_published:
             # Unpublishing
             post.published_at = None
@@ -209,7 +212,7 @@ async def update_blog_post(
             if not await validate_language_code(translation_data.language_code, db):
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid language code: {translation_data.language_code}"
+                    detail={"translation_code": "INVALID_LANGUAGE_CODE", "message": f"Invalid language code: {translation_data.language_code}"}
                 )
             
             # Find existing translation
@@ -223,7 +226,7 @@ async def update_blog_post(
                 translation_update_data = translation_data.dict(exclude_unset=True, exclude={'language_code'})
                 for field, value in translation_update_data.items():
                     setattr(existing_translation, field, value)
-                existing_translation.updated_at = datetime.utcnow()
+                existing_translation.updated_at = datetime.now(timezone.utc)
             else:
                 # Create new translation
                 new_translation = BlogPostTranslation(
@@ -248,7 +251,7 @@ async def update_blog_post(
                 tag = BlogTag(post_id=post_id, tag_name=tag_name.strip())
                 db.add(tag)
     
-    post.updated_at = datetime.utcnow()
+    post.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(post)
     
@@ -293,7 +296,10 @@ async def get_blog_post_by_slug(
     ).filter(BlogPost.slug == slug).first()
     
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "POST_NOT_FOUND", "message": "Post not found"}
+        )
     
     if language:
         # Return single language version
@@ -304,7 +310,7 @@ async def get_blog_post_by_slug(
         if not translation:
             raise HTTPException(
                 status_code=404, 
-                detail=f"Translation for language '{language}' not found"
+                detail={"translation_code": "TRANSLATION_NOT_FOUND", "message": f"Translation for language '{language}' not found"}
             )
         
         return {
@@ -368,7 +374,7 @@ async def create_blog_post(
     if existing_post:
         raise HTTPException(
             status_code=400,
-            detail="Slug already exists"
+            detail={"translation_code": "SLUG_EXISTS", "message": "Slug already exists"}
         )
     
     # Validate all language codes
@@ -376,7 +382,7 @@ async def create_blog_post(
         if not await validate_language_code(translation.language_code, db):
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid language code: {translation.language_code}"
+                detail={"translation_code": "INVALID_LANGUAGE_CODE", "message": f"Invalid language code: {translation.language_code}"}
             )
     
     # Create main blog post
@@ -502,13 +508,16 @@ async def publish_blog_post(
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "POST_NOT_FOUND", "message": "Post not found"}
+        )
     
     post.is_published = True
-    post.published_at = datetime.utcnow()
+    post.published_at = datetime.now(timezone.utc)
     db.commit()
-    
-    return APIResponse(success=True, message="Post published successfully")
+
+    return APIResponse(success=True,type="success",translation_code="POST_PUBLISHED", message="Post published successfully")
 
 @router.put("/{post_id}/unpublish", response_model=APIResponse)
 async def unpublish_blog_post(
@@ -520,13 +529,16 @@ async def unpublish_blog_post(
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "POST_NOT_FOUND", "message": "Post not found"}
+        )
     
     post.is_published = False
     post.published_at = None
     db.commit()
-    
-    return APIResponse(success=True, message="Post unpublished successfully")
+
+    return APIResponse(success=True, type="success", translation_code="POST_UNPUBLISHED", message="Post unpublished successfully")
 
 # Translation management endpoints
 @router.post("/{post_id}/translations", response_model=dict)
@@ -541,13 +553,16 @@ async def add_translation(
     # Check if post exists
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "POST_NOT_FOUND", "message": "Post not found"}
+        )
     
     # Validate language code
     if not await validate_language_code(translation.language_code, db):
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid language code: {translation.language_code}"
+            detail={"translation_code": "INVALID_LANGUAGE_CODE", "message": f"Invalid language code: {translation.language_code}"}
         )
     
     # Check if translation already exists
@@ -559,7 +574,7 @@ async def add_translation(
     if existing:
         raise HTTPException(
             status_code=400,
-            detail=f"Translation for language '{translation.language_code}' already exists"
+            detail={"translation_code": "TRANSLATION_EXISTS", "message": f"Translation for language '{translation.language_code}' already exists"}
         )
     
     # Create translation
@@ -607,7 +622,7 @@ async def update_translation(
     if not translation:
         raise HTTPException(
             status_code=404, 
-            detail=f"Translation for language '{language_code}' not found"
+            detail={"translation_code": "TRANSLATION_NOT_FOUND", "message": f"Translation for language '{language_code}' not found"}
         )
     
     # Update fields
@@ -615,7 +630,7 @@ async def update_translation(
     for field, value in update_data.items():
         setattr(translation, field, value)
     
-    translation.updated_at = datetime.utcnow()
+    translation.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(translation)
     
@@ -648,7 +663,7 @@ async def delete_translation(
     if not translation:
         raise HTTPException(
             status_code=404, 
-            detail=f"Translation for language '{language_code}' not found"
+            detail={"translation_code": "TRANSLATION_NOT_FOUND", "message": f"Translation for language '{language_code}' not found"}
         )
     
     # Check if this is the last translation
@@ -659,13 +674,13 @@ async def delete_translation(
     if translation_count <= 1:
         raise HTTPException(
             status_code=400,
-            detail="Cannot delete the last translation. A post must have at least one translation."
+            detail={"translation_code": "LAST_TRANSLATION", "message": "Cannot delete the last translation. A post must have at least one translation."}
         )
     
     db.delete(translation)
     db.commit()
-    
-    return APIResponse(success=True, message="Translation deleted successfully")
+
+    return APIResponse(success=True, type="success", translation_code="TRANSLATION_DELETED", message="Translation deleted successfully")
 
 @router.delete("/{post_id}", response_model=APIResponse)
 async def delete_blog_post(
@@ -678,7 +693,10 @@ async def delete_blog_post(
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "POST_NOT_FOUND", "message": "Post not found"}
+        )
     
     # Delete related tags
     db.query(BlogTag).filter(BlogTag.post_id == post_id).delete()
@@ -689,5 +707,5 @@ async def delete_blog_post(
     # Delete post
     db.delete(post)
     db.commit()
-    
-    return APIResponse(success=True, message="Post deleted successfully")
+
+    return APIResponse(success=True, type="success", translation_code="POST_DELETED", message="Post deleted successfully")

@@ -151,6 +151,7 @@ class UserLogin(BaseModel):
 
 class EmailVerificationRequest(BaseModel):
     email: str = Field(..., pattern=r'^[\w\.-]+@[\w\.-]+\.\w+$')
+    language: Optional[str] = Field(default="pl", description="Preferred language for email (pl/en)")
 
 class EmailVerificationConfirm(BaseModel):
     email: str = Field(..., pattern=r'^[\w\.-]+@[\w\.-]+\.\w+$')
@@ -158,6 +159,7 @@ class EmailVerificationConfirm(BaseModel):
 
 class PasswordResetRequest(BaseModel):
     email: str = Field(..., pattern=r'^[\w\.-]+@[\w\.-]+\.\w+$')
+    language: Optional[str] = Field(default="pl", description="Preferred language for email (pl/en)")
 
 class PasswordResetConfirm(BaseModel):
     email: str = Field(..., pattern=r'^[\w\.-]+@[\w\.-]+\.\w+$')
@@ -171,6 +173,7 @@ class UserRegistrationRequest(BaseModel):
     password: str = Field(..., min_length=8)
     full_name: Optional[str] = None
     bio: Optional[str] = None
+    language: Optional[str] = Field(default="pl", description="Preferred language for email (pl/en)")
 
 class User(UserBase):
     id: int
@@ -183,9 +186,12 @@ class User(UserBase):
 
 class UserResponse(BaseModel):
     user: User
-    access_token: str
-    refresh_token: Optional[str] = None
-    token_type: str = "bearer"
+    message: Optional[str] = "Login successful"
+
+class AuthResponse(BaseModel):
+    success: bool = True
+    message: str = "Authentication successful" 
+    user: User
 
 class Token(BaseModel):
     access_token: str
@@ -286,6 +292,8 @@ class CommentLike(BaseModel):
 class APIResponse(BaseModel):
     success: bool
     message: str
+    type: Optional[str] = None
+    translation_code: Optional[str] = None
     data: Optional[dict] = None
 
 class PaginatedResponse(BaseModel):

@@ -7,18 +7,18 @@ from app.database import Base
 # Enums for user roles and ranks
 class UserRoleEnum(str, Enum):
     """Main user roles"""
-    USER = "user"           # Regular user
-    MODERATOR = "moderator" # Moderator (future)
-    ADMIN = "admin"         # Administrator
+    USER = "role.user"           # Regular user
+    MODERATOR = "role.moderator" # Moderator (future)
+    ADMIN = "role.admin"         # Administrator
 
 class UserRankEnum(str, Enum):
     """User ranks/badges"""
-    NEWBIE = "newbie"       # New user
-    REGULAR = "regular"     # Regular user
-    TRUSTED = "trusted"     # Trusted user
-    STAR = "star"          # Community star
-    LEGEND = "legend"      # Legend (future)
-    VIP = "vip"           # VIP (future)
+    NEWBIE = "rank.newbie"       # New user
+    REGULAR = "rank.regular"     # Regular user
+    TRUSTED = "rank.trusted"     # Trusted user
+    STAR = "rank.star"          # Community star
+    LEGEND = "rank.legend"      # Legend (future)
+    VIP = "rank.vip"           # VIP (future)
 
 class UserRole(Base):
     """Model for user roles - modular permission system"""

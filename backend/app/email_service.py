@@ -5,7 +5,7 @@ import os
 import resend
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Configure Resend
 resend.api_key = os.getenv("RESEND_API_KEY")
@@ -33,11 +33,12 @@ EMAIL_TRANSLATIONS = {
             "header": "Reset hasła",
             "greeting": "Cześć {username}!",
             "message": "Otrzymaliśmy prośbę o zresetowanie hasła do Twojego konta.",
-            "instruction": "Aby zresetować hasło, kliknij poniższy przycisk:",
+            "instructions": "Aby zresetować hasło, kliknij poniższy przycisk:",
             "button_text": "Resetuj hasło",
-            "warning_title": "Uwaga:",
-            "warning_text": "Link jest ważny przez 1 godzinę. Jeśli to nie Ty prosiłeś o reset hasła, zignoruj tę wiadomość.",
-            "manual_link": "Jeśli przycisk nie działa, skopiuj i wklej poniższy link do przeglądarki:",
+            "warning_title": "Uwaga",
+            "link_validity": "Link jest ważny przez 30 minut.",
+            "ignore_message": "Jeśli to nie Ty prosiłeś o reset hasła, zignoruj tę wiadomość.",
+            "manual_copy": "Jeśli przycisk nie działa, skopiuj i wklej poniższy link do przeglądarki",
             "footer": "© {year} Portfolio KGR33N. Wszystkie prawa zastrzeżone."
         },
         "contact_form": {
@@ -71,7 +72,7 @@ EMAIL_TRANSLATIONS = {
             "instructions": "To reset your password, click the button below:",
             "button_text": "Reset Password",
             "warning_title": "Warning",
-            "link_validity": "This link is valid for 1 hour.",
+            "link_validity": "This link is valid for 30 minutes.",
             "ignore_message": "If you didn't request a password reset, please ignore this message.",
             "manual_copy": "If the button doesn't work, copy and paste the following link into your browser",
             "footer": "&copy; {year} Portfolio KGR33N. All rights reserved."
@@ -144,7 +145,7 @@ class EmailService:
         try:
             # Implementacja zgodna z działającym endpointem
             params: resend.Emails.SendParams = {
-                "from": FROM_EMAIL,
+                "from": f"KGR33N <{FROM_EMAIL}>",
                 "to": message.to,
                 "subject": message.subject,
                 "html": message.html,
@@ -214,7 +215,7 @@ class EmailService:
                 .button {{
                     display: inline-block;
                     background: #2563eb;
-                    color: white;
+                    color: black;
                     padding: 12px 30px;
                     text-decoration: none;
                     border-radius: 5px;
@@ -259,7 +260,7 @@ class EmailService:
                     
                     <p>{t["ignore_message"]}</p>
                 </div>
-                <div class="footer">{t["footer"].format(year=datetime.now().year)}</div>
+                <div class="footer">{t["footer"].format(year=datetime.now(timezone.utc).year)}</div>
             </div>
         </body>
         </html>
@@ -281,16 +282,8 @@ class EmailService:
         
         {t["ignore_message"]}
         
-        {t["footer"].format(year=datetime.now().year)}
+        {t["footer"].format(year=datetime.now(timezone.utc).year)}
         """
-        
-        {verification_code}
-        
-        {t["code_validity"]}
-        
-        {t["ignore_message"]}
-        
-        {t["footer"].format(year=datetime.now().year)}
         
         print(f"📧 Creating EmailMessage for {email}")
         
@@ -318,8 +311,9 @@ class EmailService:
         
         # Get translations
         t = EMAIL_TRANSLATIONS.get(language, EMAIL_TRANSLATIONS["en"])["password_reset"]
-        
-        reset_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:4321')}/auth/reset-password?token={reset_token}"
+        print(f"🔄 Starting send_password_reset_email for {email} in {language}")
+        # Include language in URL path (consistent with verification)
+        reset_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:4321')}/{language}/reset-password?token={reset_token}&email={email}"
         
         html_content = f"""
         <!DOCTYPE html>
@@ -335,7 +329,7 @@ class EmailService:
                 .button {{ 
                     display: inline-block; 
                     background: #2563eb; 
-                    color: white; 
+                    color: black; 
                     padding: 12px 30px; 
                     text-decoration: none; 
                     border-radius: 5px; 
@@ -365,7 +359,7 @@ class EmailService:
                     <p style="word-break: break-all; color: #666;">{reset_url}</p>
                 </div>
                 <div class="footer">
-                    <p>{t["footer"].format(year=datetime.now().year)}</p>
+                    <p>{t["footer"].format(year=datetime.now(timezone.utc).year)}</p>
                 </div>
             </div>
         </body>
@@ -384,7 +378,7 @@ class EmailService:
         
         {t["warning_title"]}: {t["link_validity"]} {t["ignore_message"]}
         
-        {t["footer"].format(year=datetime.now().year)}
+        {t["footer"].format(year=datetime.now(timezone.utc).year)}
         """
         
         message = EmailMessage(
@@ -452,7 +446,7 @@ class EmailService:
                         <div class="message-content">{message.replace(chr(10), '<br>')}</div>
                     </div>
                     <p style="color: #666; font-size: 14px; margin-top: 30px;">
-                        {t["sent_at"]}: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                        {t["sent_at"]}: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}
                     </p>
                 </div>
             </div>
@@ -469,30 +463,4 @@ class EmailService:
         
         return await EmailService.send_email(message_obj)
 
-    @staticmethod
-    async def send_test_email(to_email: str) -> dict:
-        """Send simple test email to verify configuration"""
-        try:
-            params = {
-                "from": FROM_EMAIL,
-                "to": [to_email],
-                "subject": "Test Email - Portfolio KGR33N",
-                "html": "<strong>Test email działa!</strong><p>Email service jest poprawnie skonfigurowany.</p>",
-            }
-            
-            response = resend.Emails.send(params)
-            
-            print(f"✅ Test email sent successfully to {to_email}: {response}")
-            return {
-                "success": True,
-                "message": "Test email sent successfully",
-                "id": str(response) if response else "unknown"
-            }
-            
-        except Exception as e:
-            print(f"❌ Failed to send test email to {to_email}: {str(e)}")
-            return {
-                "success": False,
-                "message": f"Failed to send test email: {str(e)}",
-                "id": None
-            }
+

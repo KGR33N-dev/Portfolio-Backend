@@ -201,7 +201,7 @@ async def send_contact_message(
         print(f"Contact form error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail="Wystąpił błąd podczas wysyłania wiadomości. Spróbuj ponownie później."
+            detail={"translation_code": "CONTACT_FORM_ERROR", "message": "Wystąpił błąd podczas wysyłania wiadomości. Spróbuj ponownie później."}
         )
 
 @app.post("/api/admin/cleanup", response_model=ContactResponse)
@@ -224,7 +224,7 @@ async def manual_cleanup(
         print(f"Manual cleanup error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail="Wystąpił błąd podczas uruchamiania zadań czyszczenia."
+            detail={"translation_code": "CLEANUP_TASK_ERROR", "message": "Wystąpił błąd podczas uruchamiania zadań czyszczenia."}
         )
 
 

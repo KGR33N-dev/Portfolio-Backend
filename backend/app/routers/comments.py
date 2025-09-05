@@ -15,6 +15,14 @@ from ..rank_utils import update_user_stats
 
 router = APIRouter()
 
+def make_timezone_aware(dt):
+    """Convert naive datetime to UTC timezone-aware datetime"""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
 def get_client_ip(request: Request) -> str:
     """Get client IP address"""
     x_forwarded_for = request.headers.get('X-Forwarded-For')
@@ -46,7 +54,10 @@ def build_comment_response(comment: Comment, current_user: Optional[User] = None
     if current_user and not comment.is_deleted:
         # can_edit: tylko właściciel + czas < 15 min
         if comment.user_id == current_user.id:
-            time_since_creation = datetime.now(timezone.utc) - comment.created_at
+            # Ensure both datetimes are timezone-aware for comparison
+            current_time = datetime.now(timezone.utc)
+            created_at = make_timezone_aware(comment.created_at)
+            time_since_creation = current_time - created_at
             if time_since_creation <= timedelta(minutes=15):
                 can_edit = True
         
@@ -121,7 +132,10 @@ async def get_post_comments(
     # Check if post exists
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "POST_NOT_FOUND", "message": "Post not found"}
+        )
     
     # Base query - only top-level comments (no parent)
     # Eager load user with role and rank to avoid N+1 queries
@@ -183,7 +197,10 @@ async def create_comment(
         BlogPost.is_published == True
     ).first()
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found or not published")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "POST_NOT_FOUND", "message": "Post not found or not published"}
+        )
     
     # Check if parent comment exists (for replies)
     if comment_data.parent_id:
@@ -192,16 +209,17 @@ async def create_comment(
             Comment.post_id == post_id
         ).first()
         if not parent_comment:
-            raise HTTPException(status_code=404, detail="Parent comment not found")
+            raise HTTPException(
+                status_code=404, 
+                detail={"translation_code": "PARENT_COMMENT_NOT_FOUND", "message": "Parent comment not found"}
+            )
         
         # 🎯 OGRANICZENIE GŁĘBOKOŚCI: Maksymalnie 2 poziomy komentarzy
         if parent_comment.parent_id is not None:
             raise HTTPException(
-                status_code=400, 
-                detail="Nie można odpowiadać na odpowiedzi. Maksymalnie 2 poziomy komentarzy."
-            )
-    
-    # Create comment (tylko dla zalogowanych użytkowników)
+                status_code=400,
+                detail={"translation_code": "MAX_COMMENT_DEPTH", "message": "Nie można odpowiadać na odpowiedzi. Maksymalnie 2 poziomy komentarzy."}
+            )    # Create comment (tylko dla zalogowanych użytkowników)
     new_comment = Comment(
         post_id=post_id,
         user_id=current_user.id,  # Wymagane - użytkownik musi być zalogowany
@@ -245,16 +263,27 @@ async def update_comment(
     
     comment = db.query(Comment).filter(Comment.id == comment_id).first()
     if not comment:
-        raise HTTPException(status_code=404, detail="Comment not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "COMMENT_NOT_FOUND", "message": "Comment not found"}
+        )
     
     # 🔐 SPRAWDZANIE UPRAWNIEŃ DO EDYCJI
     # Tylko właściciel komentarza może go edytować (moderatorzy i admini NIE mogą edytować cudzych komentarzy)
     if comment.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Możesz edytować tylko swoje komentarze")
+        raise HTTPException(
+            status_code=403, 
+            detail={"translation_code": "COMMENT_EDIT_PERMISSION", "message": "Możesz edytować tylko swoje komentarze"}
+        )
     
     # Check if comment is not too old (e.g., 15 minutes edit window)
-    if datetime.now(timezone.utc) - comment.created_at > timedelta(minutes=15):
-        raise HTTPException(status_code=403, detail="Czas na edycję komentarza minął (15 minut)")
+    current_time = datetime.now(timezone.utc)
+    created_at = make_timezone_aware(comment.created_at)
+    if current_time - created_at > timedelta(minutes=15):
+        raise HTTPException(
+            status_code=403, 
+            detail={"translation_code": "COMMENT_EDIT_TIMEOUT", "message": "Czas na edycję komentarza minął (15 minut)"}
+        )
     
     comment.content = comment_data.content
     comment.updated_at = datetime.now(timezone.utc)
@@ -282,7 +311,10 @@ async def delete_comment(
     
     comment = db.query(Comment).filter(Comment.id == comment_id).first()
     if not comment:
-        raise HTTPException(status_code=404, detail="Comment not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "COMMENT_NOT_FOUND", "message": "Comment not found"}
+        )
     
     # 🔐 SPRAWDZANIE UPRAWNIEŃ DO USUWANIA
     can_delete = False
@@ -306,7 +338,7 @@ async def delete_comment(
     if not can_delete:
         raise HTTPException(
             status_code=403, 
-            detail="Nie masz uprawnień do usunięcia tego komentarza. Możesz usuwać tylko swoje komentarze."
+            detail={"translation_code": "COMMENT_DELETE_PERMISSION", "message": "Nie masz uprawnień do usunięcia tego komentarza. Możesz usuwać tylko swoje komentarze."}
         )
     
     # Soft delete
@@ -315,7 +347,9 @@ async def delete_comment(
     db.commit()
     
     return APIResponse(
-        success=True, 
+        success=True,
+        type="success",
+        translation_code="COMMENT_DELETED",
         message=f"Komentarz został usunięty ({delete_reason})"
     )
 
@@ -333,13 +367,16 @@ async def like_comment(
         Comment.is_deleted == False
     ).first()
     if not comment:
-        raise HTTPException(status_code=404, detail="Comment not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "COMMENT_NOT_FOUND", "message": "Comment not found"}
+        )
     
     # 🚫 WALIDACJA: Użytkownik nie może polubić własnych komentarzy
     if comment.user_id == current_user.id:
         raise HTTPException(
             status_code=400, 
-            detail="Nie możesz polubić własnego komentarza"
+            detail={"translation_code": "SELF_LIKE_ERROR", "message": "Nie możesz polubić własnego komentarza"}
         )
     
     # Check if user already liked/disliked this comment
@@ -381,6 +418,8 @@ async def like_comment(
     like_type = "like" if like_data.is_like else "dislike"
     response_data = {
         "success": True,
+        "type": "success",
+        "translation_code": "COMMENT_LIKE_SUCCESS",
         "message": f"Comment {like_type} {action} successfully"
     }
     
@@ -403,7 +442,10 @@ async def get_comment_replies(
     # Check if parent comment exists
     parent_comment = db.query(Comment).filter(Comment.id == comment_id).first()
     if not parent_comment:
-        raise HTTPException(status_code=404, detail="Comment not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "COMMENT_NOT_FOUND", "message": "Comment not found"}
+        )
     
     # Get replies with eager loading of user roles and ranks
     query = db.query(Comment).options(
@@ -437,7 +479,10 @@ async def get_post_comment_stats(
     # Check if post exists
     post = db.query(BlogPost).filter(BlogPost.id == post_id).first()
     if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+        raise HTTPException(
+            status_code=404, 
+            detail={"translation_code": "POST_NOT_FOUND", "message": "Post not found"}
+        )
     
     # Get stats
     total_comments = db.query(Comment).filter(

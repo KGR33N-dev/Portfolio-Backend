@@ -17,12 +17,16 @@ import os
 
 from .database import get_db
 from .models import User, APIKey, UserRoleEnum
-from .schemas import Token
+from .datetime_utils import safe_current_time, is_datetime_expired, make_timezone_aware
+
+# Import Response for cookie handling  
+from fastapi import Response
 
 # Security configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 15  # 15 minutes for access token
+REFRESH_TOKEN_EXPIRE_DAYS = 7     # 7 days for refresh token
 
 # Password hashing with enhanced security
 pwd_context = CryptContext(
@@ -76,16 +80,69 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def create_refresh_token(user_id: int) -> str:
-    """Create a refresh token for longer-term authentication"""
+def create_refresh_token(user_id: int):
+    """Create JWT refresh token"""
     data = {
         "sub": str(user_id),
         "type": "refresh",
-        "exp": datetime.now(timezone.utc) + timedelta(days=7),  # 7 days
-        "iat": datetime.now(timezone.utc),
+        "exp": safe_current_time() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        "iat": safe_current_time(),
         "jti": secrets.token_urlsafe(16)
     }
     return jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
+    """Set HTTP-only cookies for authentication (secure based on environment)"""
+    # Check environment to determine if cookies should be secure
+    environment = os.getenv("ENVIRONMENT", "production").lower()
+    is_secure = environment == "production"  # Only secure in production
+    
+    # Set access token cookie (15 minutes)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Convert to seconds
+        httponly=True,
+        secure=is_secure,  # True for production/HTTPS, False for development/HTTP
+        samesite="lax",
+        path="/"
+    )
+    
+    # Set refresh token cookie (7 days)
+    response.set_cookie(
+        key="refresh_token", 
+        value=refresh_token,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,  # Convert to seconds
+        httponly=True,
+        secure=is_secure,  # True for production/HTTPS, False for development/HTTP
+        samesite="lax",
+        path="/auth"  # Only send to auth endpoints
+    )
+
+def clear_auth_cookies(response: Response):
+    """Clear authentication cookies"""
+    # Check environment to determine cookie settings
+    environment = os.getenv("ENVIRONMENT", "production").lower()
+    is_secure = environment == "production"
+    
+    response.delete_cookie(
+        key="access_token", 
+        path="/",
+        secure=is_secure,
+        httponly=True,
+        samesite="lax"
+    )
+    response.delete_cookie(
+        key="refresh_token", 
+        path="/auth",
+        secure=is_secure,
+        httponly=True,
+        samesite="lax"
+    )
+
+def get_token_from_cookie(request: Request, cookie_name: str) -> Optional[str]:
+    """Extract token from HTTP-only cookie"""
+    return request.cookies.get(cookie_name)
 
 def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
     """Verify and decode a JWT token with type checking"""
@@ -96,9 +153,9 @@ def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
         if payload.get("type") != token_type:
             return None
             
-        # Check if token is expired
+        # Check if token is expired using safe datetime comparison
         exp = payload.get("exp")
-        if exp and datetime.fromtimestamp(exp, timezone.utc) < datetime.now(timezone.utc):
+        if exp and datetime.fromtimestamp(exp, timezone.utc) < safe_current_time():
             return None
             
         return payload
@@ -182,18 +239,22 @@ def authenticate_user(db: Session, email: str, password: str) -> Union[User, boo
     return user
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
     db: Session = Depends(get_db)
 ) -> User:
-    """Get current authenticated user from JWT token (email-based)"""
+    """Get current authenticated user from JWT token in cookie"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
+        detail={"translation_code": "INVALID_CREDENTIALS", "message": "Could not validate credentials"},
     )
     
     try:
-        payload = verify_token(credentials.credentials, "access")
+        # Get token from cookie instead of Authorization header
+        token = get_token_from_cookie(request, "access_token")
+        if not token:
+            raise credentials_exception
+            
+        payload = verify_token(token, "access")
         if payload is None:
             raise credentials_exception
         
@@ -218,19 +279,20 @@ def get_current_user(
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """Get current active user"""
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=400, detail={"translation_code": "INACTIVE_USER", "message": "Inactive user"})
     return current_user
 
 def get_current_user_optional(
-    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
+    request: Request,
     db: Session = Depends(get_db)
 ) -> Optional[User]:
     """Get current user optionally (returns None if no token provided)"""
-    if not credentials:
+    token = get_token_from_cookie(request, "access_token")
+    if not token:
         return None
     
     try:
-        payload = verify_token(credentials.credentials, "access")
+        payload = verify_token(token, "access")
         if payload is None:
             return None
         
@@ -254,7 +316,7 @@ def get_current_admin_user(current_user: User = Depends(get_current_active_user)
     if not current_user.role or current_user.role.name != UserRoleEnum.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
+            detail={"translation_code": "INSUFFICIENT_PERMISSIONS", "message": "Not enough permissions"}
         )
     return current_user
 
@@ -320,7 +382,7 @@ def require_permission(permission: str):
         
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Permission '{permission}' required"
+            detail={"translation_code": "INSUFFICIENT_PERMISSIONS", "message": f"Permission '{permission}' required"}
         )
     
     return permission_checker
