@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from ..database import get_db
-from ..models import User, UserRoleEnum
+from ..models import User, UserRoleEnum, Comment, CommentLike, APIKey
 from ..schemas import APIResponse
 from ..security import (
     get_current_user, verify_password, get_password_hash, 
@@ -237,12 +237,18 @@ async def delete_account(
     
     try:
         # 🗑️ USUNIĘCIE KONTA
-        # Dzięki ON DELETE CASCADE w bazie, powiązane dane zostaną automatycznie usunięte:
-        # - komentarze (comments)
-        # - polubienia komentarzy (comment_likes)  
-        # - klucze API (api_keys)
-        # - tokeny resetowania hasła
+        # Najpierw usuwamy powiązane dane ręcznie, aby uniknąć problemów z foreign key constraints
         
+        # 1. Usuń polubienia komentarzy użytkownika
+        db.query(CommentLike).filter(CommentLike.user_id == current_user.id).delete()
+        
+        # 2. Usuń komentarze użytkownika (wraz z odpowiedziami dzięki CASCADE w parent_id)
+        db.query(Comment).filter(Comment.user_id == current_user.id).delete()
+        
+        # 3. Usuń klucze API użytkownika
+        db.query(APIKey).filter(APIKey.user_id == current_user.id).delete()
+        
+        # 4. Usuń użytkownika
         db.delete(current_user)
         db.commit()
         

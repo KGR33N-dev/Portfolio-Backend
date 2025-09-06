@@ -116,7 +116,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
         httponly=True,
         secure=is_secure,  # True for production/HTTPS, False for development/HTTP
         samesite="lax",
-        path="/auth"  # Only send to auth endpoints
+        path="/"  # Match the router prefix
     )
 
 def clear_auth_cookies(response: Response):
@@ -134,7 +134,7 @@ def clear_auth_cookies(response: Response):
     )
     response.delete_cookie(
         key="refresh_token", 
-        path="/auth",
+        path="/",
         secure=is_secure,
         httponly=True,
         samesite="lax"

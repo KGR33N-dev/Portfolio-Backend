@@ -187,9 +187,9 @@ class User(Base):
     role = relationship("UserRole", back_populates="users")
     rank = relationship("UserRank", back_populates="users")
     blog_posts = relationship("BlogPost", back_populates="author_user")
-    api_keys = relationship("APIKey", back_populates="user")
-    comments = relationship("Comment", back_populates="user")
-    comment_likes = relationship("CommentLike", back_populates="user")
+    api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
+    comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
+    comment_likes = relationship("CommentLike", back_populates="user", cascade="all, delete-orphan")
     
     # 🎯 UTILITY METHODS for role and rank system
     def has_permission(self, permission: str) -> bool:

@@ -215,12 +215,20 @@ class EmailService:
                 .button {{
                     display: inline-block;
                     background: #2563eb;
-                    color: black;
+                    color: white !important;
                     padding: 12px 30px;
                     text-decoration: none;
                     border-radius: 5px;
                     margin: 20px 0;
                     font-weight: bold;
+                    text-shadow: none;
+                    font-size: 16px;
+                    border: 2px solid #2563eb;
+                }}
+                .button:hover {{
+                    background: #1d4ed8;
+                    color: white !important;
+                    border-color: #1d4ed8;
                 }}
                 .link {{
                     color: #2563eb;
@@ -329,11 +337,20 @@ class EmailService:
                 .button {{ 
                     display: inline-block; 
                     background: #2563eb; 
-                    color: black; 
+                    color: white !important; 
                     padding: 12px 30px; 
                     text-decoration: none; 
                     border-radius: 5px; 
                     margin: 20px 0;
+                    font-weight: bold;
+                    text-shadow: none;
+                    font-size: 16px;
+                    border: 2px solid #2563eb;
+                }}
+                .button:hover {{ 
+                    background: #1d4ed8; 
+                    color: white !important;
+                    border-color: #1d4ed8;
                 }}
                 .footer {{ padding: 20px; text-align: center; color: #666; }}
                 .warning {{ background: #fef3c7; padding: 15px; border-radius: 5px; margin: 15px 0; }}
