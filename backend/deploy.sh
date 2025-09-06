@@ -28,6 +28,10 @@ check_env_vars() {
         export SECRET_KEY=$(openssl rand -hex 32)
     fi
     
+    if [ -z "$ADMIN_PASSWORD" ]; then
+        echo -e "${YELLOW}⚠️  ADMIN_PASSWORD is not set. Admin user creation will be skipped.${NC}"
+    fi
+    
     echo -e "${GREEN}✅ Environment variables checked${NC}"
 }
 

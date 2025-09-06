@@ -29,6 +29,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source code
 COPY . .
 
+# Make start script executable
+RUN chmod +x start-with-migrations.sh
+
 # Change ownership to app user
 RUN chown -R app:app /app
 
@@ -42,5 +45,5 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 # Expose port 8000
 EXPOSE 8000
 
-# Production command - no reload
+# Start FastAPI with production settings (no reload)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
