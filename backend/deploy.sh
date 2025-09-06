@@ -63,7 +63,7 @@ health_check() {
     sleep 10
     
     # Check if the app is responding
-    if curl -f http://localhost:8000/api/health > /dev/null 2>&1; then
+    if curl -f http://localhost:80/api/health > /dev/null 2>&1; then
         echo -e "${GREEN}✅ Application is healthy${NC}"
     else
         echo -e "${RED}❌ Application health check failed${NC}"
@@ -85,9 +85,9 @@ main() {
     health_check
     
     echo -e "${GREEN}🎉 Deployment completed successfully!${NC}"
-    echo "📱 Your API is running at: http://localhost:8000"
-    echo "📖 API Documentation (if enabled): http://localhost:8000/api/docs"
-    echo "❤️  Health Check: http://localhost:8000/api/health"
+    echo "📱 Your API is running at: http://localhost:80"
+    echo "📖 API Documentation (if enabled): http://localhost:80/api/docs"
+    echo "❤️  Health Check: http://localhost:80/api/health"
     
     read -p "Do you want to see the logs? (y/n): " -n 1 -r
     echo
