@@ -77,7 +77,7 @@ server {
     add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
 
     location / {
-        proxy_pass http://localhost:80;
+        proxy_pass http://localhost:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -106,7 +106,7 @@ server {
 
     # Health check endpoint
     location /api/health {
-        proxy_pass http://localhost:80/api/health;
+        proxy_pass http://localhost:8080/api/health;
         access_log off;
     }
 }
