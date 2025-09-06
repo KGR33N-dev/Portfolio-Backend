@@ -2,7 +2,7 @@ services:
   web:
     build: .
     ports:
-      - "80:80"
+      - "8080:8080"
     env_file:
       - .env.production
     environment:
@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
     network_mode: host  # Allow access to local PostgreSQL
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
