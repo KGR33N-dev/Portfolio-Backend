@@ -92,7 +92,8 @@ origins = [
     "https://www.kgr33n.com",
     "http://kgr33n.com",
     "http://www.kgr33n.com",
-    "https://api.kgr33n.com"
+    "https://api.kgr33n.com",
+    "http://api.kgr33n.com"
 ]
 
 # Add FRONTEND_URL if not already in origins
@@ -107,6 +108,15 @@ if PRODUCTION_FRONTEND and PRODUCTION_FRONTEND not in origins:
         f"https://{PRODUCTION_FRONTEND.replace('https://', '').replace('http://', '')}",
         f"https://www.{PRODUCTION_FRONTEND.replace('https://', '').replace('http://', '').replace('www.', '')}"
     ])
+
+# Add additional origins from environment variable
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "")
+if ALLOWED_ORIGINS:
+    additional_origins = [origin.strip() for origin in ALLOWED_ORIGINS.split(",") if origin.strip()]
+    for origin in additional_origins:
+        if origin not in origins:
+            origins.append(origin)
+            print(f"✅ Added additional origin: {origin}")
 
 print(f"🔧 CORS Origins: {origins}")  # Debug
 
