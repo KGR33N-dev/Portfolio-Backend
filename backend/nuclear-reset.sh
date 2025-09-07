@@ -18,8 +18,8 @@ echo "🔍 Database connection test:"
 echo "  Testing with postgres user..."
 docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "SELECT version();" 2>/dev/null || echo "  ❌ postgres user connection failed"
 
-echo "  Testing with portfolio_user..."
-docker-compose -f docker-compose.prod.yml exec -T db psql -U portfolio_user -d portfolio_prod -c "SELECT current_database(), current_user;" 2>/dev/null || echo "  ❌ portfolio_user connection failed"
+echo "  Testing with postgres_user..."
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "SELECT current_database(), current_user;" 2>/dev/null || echo "  ❌ postgres_user connection failed"
 
 echo "🔍 Database structure verification:"
 echo "  Available databases:"
@@ -33,11 +33,11 @@ echo "🔍 Extended database verification:"
 echo "  Checking portfolio_prod database exists:"
 docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "SELECT datname FROM pg_database WHERE datname='portfolio_prod';" 2>/dev/null || echo "  ❌ Query failed"
 
-echo "  Checking portfolio_user exists:"
-docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "SELECT rolname FROM pg_roles WHERE rolname='portfolio_user';" 2>/dev/null || echo "  ❌ Query failed"
+echo "  Checking postgres_user exists:"
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "SELECT rolname FROM pg_roles WHERE rolname='postgres_user';" 2>/dev/null || echo "  ❌ Query failed"
 
 echo "  Testing application database connection:"
-docker-compose -f docker-compose.prod.yml exec -T db psql -U portfolio_user -d portfolio_prod -c "SELECT 'Connection successful' as status;" 2>/dev/null || echo "  ❌ Application connection failed"
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "SELECT 'Connection successful' as status;" 2>/dev/null || echo "  ❌ Application connection failed"
 
 # Application logs verification
 echo "🔍 Application startup logs:"
