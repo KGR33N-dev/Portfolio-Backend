@@ -19,10 +19,6 @@ print(f"  POSTGRES_DB: {os.getenv('POSTGRES_DB', 'NOT SET')}")
 print(f"  POSTGRES_USER: {os.getenv('POSTGRES_USER', 'NOT SET')}")
 print(f"  POSTGRES_PASSWORD: {'***' if os.getenv('POSTGRES_PASSWORD') else 'NOT SET'}")
 
-# Parse DATABASE_URL for verification
-from urllib.parse import urlparse
-parsed = urlparse(DATABASE_URL)
-print(f"  Parsed - Host: {parsed.hostname}, Port: {parsed.port}, DB: {parsed.path[1:]}, User: {parsed.username}")
 print(f"🔗 Connecting to database: {DATABASE_URL.split('@')[0]}@****")  # Hide password in logs
 
 # Create SQLAlchemy engine

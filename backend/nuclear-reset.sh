@@ -15,8 +15,8 @@ docker-compose -f docker-compose.prod.yml ps
 
 # Check database initialization
 echo "🔍 Database connection test:"
-echo "  Testing with postgres user..."
-docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "SELECT version();" 2>/dev/null || echo "  ❌ postgres user connection failed"
+echo "  Testing with postgres superuser..."
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "SELECT version();" 2>/dev/null || echo "  ❌ postgres superuser connection failed"
 
 echo "  Testing with postgres_user..."
 docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "SELECT current_database(), current_user;" 2>/dev/null || echo "  ❌ postgres_user connection failed"
@@ -78,7 +78,7 @@ echo "🧹 Starting nuclear reset - complete Docker cleanup..."
 # Verification logs
 echo "📋 Environment verification:"
 echo "  - POSTGRES_DB: ${POSTGRES_DB:-'NOT SET'}"
-echo "  - POSTGRES_USER: ${POSTGRES_USER:-'NOT SET'}"
+echo "  - App user: postgres_user"
 echo "  - POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:0:10}... (${#POSTGRES_PASSWORD} chars)"
 echo "  - DATABASE_URL: ${DATABASE_URL:0:30}..."
 
