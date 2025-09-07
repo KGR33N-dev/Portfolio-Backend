@@ -1,7 +1,19 @@
 #!/bin/bash
 
-# EC2 Quick Setup Script
-# Run this after connecting to EC2 via SSH
+# EC2 Quick Setup echo "📋 Available scripts:"
+echo "• ./nuclear-reset.sh - 💥 COMPLETE RESET (keeps .env.production)"
+echo "• ./clean-deploy.sh - Complete fresh deployment (regenerates credentials)"
+echo "• ./secure-deploy.sh - Full deployment (if Docker not installed)"
+echo "• ./deploy-app-only.sh - Deploy app (if Docker already installed)"
+echo "• ./fix-database.sh - Fix database user issues"
+echo "• ./configure-nginx-security.sh - Configure nginx with security"
+echo "• ./install-ssl.sh - Install SSL certificates"
+echo "• ./test-deployment.sh - Test the deployment"
+echo "• ./check-production-config.sh - Diagnostic tool"
+echo ""
+echo "🚨 FOR COMPLETE RESET (keeps your .env.production):"
+echo "1. Run: ./nuclear-reset.sh"
+echo "2. Continue with nginx and SSL setup"his after connecting to EC2 via SSH
 
 echo "🚀 EC2 Quick Setup for Portfolio Backend"
 echo "========================================"
@@ -25,11 +37,13 @@ chmod +x install-ssl.sh
 chmod +x test-deployment.sh
 chmod +x fix-database.sh
 chmod +x clean-deploy.sh
+chmod +x nuclear-reset.sh
 
 echo "✅ Basic setup completed!"
 echo ""
 echo "📋 Available scripts:"
-echo "• ./clean-deploy.sh - Complete fresh deployment (RECOMMENDED)"
+echo "• ./nuclear-reset.sh - 💥 COMPLETE RESET (removes everything!)"
+echo "• ./clean-deploy.sh - Complete fresh deployment"
 echo "• ./secure-deploy.sh - Full deployment (if Docker not installed)"
 echo "• ./deploy-app-only.sh - Deploy app (if Docker already installed)"
 echo "• ./fix-database.sh - Fix database user issues"
@@ -38,12 +52,12 @@ echo "• ./install-ssl.sh - Install SSL certificates"
 echo "• ./test-deployment.sh - Test the deployment"
 echo "• ./check-production-config.sh - Diagnostic tool"
 echo ""
-echo "📋 Quick start (FRESH DEPLOYMENT):"
+echo "� FOR COMPLETE RESET (when nothing works):"
+echo "1. Run: ./nuclear-reset.sh"
+echo "2. Continue with nginx and SSL setup"
+echo ""
+echo "📋 For normal fresh deployment:"
 echo "1. Run: ./clean-deploy.sh"
 echo "2. Run: ./configure-nginx-security.sh"
 echo "3. Configure DNS: api.kgr33n.com → $(curl -s ifconfig.me)"
 echo "4. Run: ./install-ssl.sh"
-echo ""
-echo "📋 If Docker already installed:"
-echo "1. Run: ./deploy-app-only.sh"
-echo "2. Continue with steps 2-4 above"
