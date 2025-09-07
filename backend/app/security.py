@@ -97,6 +97,16 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
     environment = os.getenv("ENVIRONMENT", "production").lower()
     is_secure = environment == "production"  # Only secure in production
     
+    # For cross-domain cookies in production, we need specific domain configuration
+    domain_config = {}
+    if environment == "production":
+        # Set domain to allow cookies across subdomains (kgr33n.com and api.kgr33n.com)
+        domain_config["domain"] = ".kgr33n.com"
+        # Use None for cross-site requests with credentials
+        samesite_setting = "none" if is_secure else "lax"
+    else:
+        samesite_setting = "lax"
+    
     # Set access token cookie (15 minutes)
     response.set_cookie(
         key="access_token",
@@ -104,8 +114,9 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Convert to seconds
         httponly=True,
         secure=is_secure,  # True for production/HTTPS, False for development/HTTP
-        samesite="lax",
-        path="/"
+        samesite=samesite_setting,
+        path="/",
+        **domain_config
     )
     
     # Set refresh token cookie (7 days)
@@ -115,8 +126,9 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,  # Convert to seconds
         httponly=True,
         secure=is_secure,  # True for production/HTTPS, False for development/HTTP
-        samesite="lax",
-        path="/"  # Match the router prefix
+        samesite=samesite_setting,
+        path="/",  # Match the router prefix
+        **domain_config
     )
 
 def clear_auth_cookies(response: Response):
@@ -125,19 +137,29 @@ def clear_auth_cookies(response: Response):
     environment = os.getenv("ENVIRONMENT", "production").lower()
     is_secure = environment == "production"
     
+    # For cross-domain cookies in production, we need specific domain configuration
+    domain_config = {}
+    if environment == "production":
+        domain_config["domain"] = ".kgr33n.com"
+        samesite_setting = "none" if is_secure else "lax"
+    else:
+        samesite_setting = "lax"
+    
     response.delete_cookie(
         key="access_token", 
         path="/",
         secure=is_secure,
         httponly=True,
-        samesite="lax"
+        samesite=samesite_setting,
+        **domain_config
     )
     response.delete_cookie(
         key="refresh_token", 
         path="/",
         secure=is_secure,
         httponly=True,
-        samesite="lax"
+        samesite=samesite_setting,
+        **domain_config
     )
 
 def get_token_from_cookie(request: Request, cookie_name: str) -> Optional[str]:

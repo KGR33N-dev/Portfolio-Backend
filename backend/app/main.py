@@ -6,6 +6,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 import os
 import asyncio
+from datetime import datetime
 from .database import init_default_languages, init_roles_and_ranks
 from .routers import auth, languages, comments, roles, profile
 from .routers import blog_multilingual as blog
@@ -119,6 +120,9 @@ if ALLOWED_ORIGINS:
             print(f"✅ Added additional origin: {origin}")
 
 print(f"🔧 CORS Origins: {origins}")  # Debug
+print(f"🌍 Environment: {ENVIRONMENT}")
+print(f"🔧 Production Frontend: {PRODUCTION_FRONTEND}")
+print(f"🔧 Backend URL: {os.getenv('BACKEND_URL', 'Not set')}")
 
 # Add CORS debugging middleware in development
 if ENVIRONMENT == "development":
@@ -136,10 +140,11 @@ if ENVIRONMENT == "development":
         
         return response
 
+# Enhanced CORS middleware for production cross-domain support
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=True,  # CRITICAL for cookies across domains
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
@@ -163,16 +168,30 @@ app.include_router(profile.router, prefix="/api", tags=["profile"])
 async def root():
     return {"message": "Portfolio API działa! 🚀", "environment": ENVIRONMENT}
 
-@app.get("/api/health")
+@app.get("/health")
 async def health_check():
+    """Health check endpoint"""
     return {
-        "status": "healthy", 
-        "message": "API is running",
+        "status": "healthy",
         "environment": ENVIRONMENT,
-        "debug": DEBUG
+        "timestamp": datetime.utcnow().isoformat(),
+        "backend_url": os.getenv("BACKEND_URL", "Not configured"),
+        "production_frontend": PRODUCTION_FRONTEND
     }
 
-@app.post("/api/contact", response_model=ContactResponse)
+@app.get("/cors-test")
+async def cors_test(request: Request):
+    """Test CORS configuration and cookies"""
+    origin = request.headers.get("origin")
+    return {
+        "message": "CORS test successful",
+        "origin": origin,
+        "origin_allowed": origin in origins if origin else None,
+        "environment": ENVIRONMENT,
+        "cors_origins": origins[:5],  # Show first 5 for debugging
+        "cookies_received": dict(request.cookies),
+        "timestamp": datetime.utcnow().isoformat()
+    }@app.post("/api/contact", response_model=ContactResponse)
 @conditional_limit("3/minute")  # Rate limit: 3 requests per minute (disabled in dev)
 async def send_contact_message(
     request: Request,
