@@ -38,7 +38,7 @@ check_env_vars() {
 # Run database migrations
 run_migrations() {
     echo "📊 Running database migrations..."
-    docker-compose -f docker-compose.prod.yml exec web alembic upgrade head
+    docker-compose -f docker-compose.prod.yml exec app alembic upgrade head
     echo -e "${GREEN}✅ Migrations completed${NC}"
 }
 
@@ -63,11 +63,11 @@ health_check() {
     sleep 10
     
     # Check if the app is responding
-    if curl -f http://localhost:80/api/health > /dev/null 2>&1; then
+    if curl -f http://localhost:8080/health > /dev/null 2>&1; then
         echo -e "${GREEN}✅ Application is healthy${NC}"
     else
         echo -e "${RED}❌ Application health check failed${NC}"
-        docker-compose -f docker-compose.prod.yml logs web
+        docker-compose -f docker-compose.prod.yml logs app
         exit 1
     fi
 }
@@ -75,7 +75,7 @@ health_check() {
 # Show logs
 show_logs() {
     echo "📋 Showing application logs..."
-    docker-compose -f docker-compose.prod.yml logs --tail=50 web
+    docker-compose -f docker-compose.prod.yml logs --tail=50 app
 }
 
 # Main deployment flow
