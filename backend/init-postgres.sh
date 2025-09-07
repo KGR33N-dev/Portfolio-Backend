@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🔧 Initializing PostgreSQL with portfolio_user..."
+echo "🔧 Initializing PostgreSQL with postgres_user..."
 echo "📋 Environment variables:"
 echo "  POSTGRES_DB: $POSTGRES_DB"
 echo "  POSTGRES_USER: $POSTGRES_USER"
@@ -43,7 +43,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     -- Verification
     SELECT 'Database: ' || current_database() as info;
     SELECT 'User: ' || current_user as info;
-    SELECT 'Portfolio user exists: ' || CASE WHEN EXISTS(SELECT 1 FROM pg_roles WHERE rolname = '$POSTGRES_USER') THEN 'YES' ELSE 'NO' END as info;
+    SELECT 'Postgres user exists: ' || CASE WHEN EXISTS(SELECT 1 FROM pg_roles WHERE rolname = '$POSTGRES_USER') THEN 'YES' ELSE 'NO' END as info;
 EOSQL
 
-echo "✅ PostgreSQL initialized with portfolio_user"
+echo "✅ PostgreSQL initialized with postgres_user"

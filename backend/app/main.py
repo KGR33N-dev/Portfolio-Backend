@@ -49,7 +49,7 @@ async def periodic_cleanup():
 
 # Start background tasks
 @app.on_event("startup")
-async def startup_event():
+def startup_event():  # <- Zmienione z async na sync
     """Start background tasks when application starts"""
     print(f"🚀 Portfolio API starting in {ENVIRONMENT} mode...")
     
@@ -57,8 +57,9 @@ async def startup_event():
     print("🔍 Verifying database connection...")
     try:
         from .database import engine, DATABASE_URL
+        from sqlalchemy import text
         with engine.connect() as conn:
-            result = conn.execute("SELECT current_database(), current_user, version();")
+            result = conn.execute(text("SELECT current_database(), current_user, version();"))
             row = result.fetchone()
             print(f"✅ Database connected: {row[0]} as user {row[1]}")
             print(f"   PostgreSQL version: {row[2].split(',')[0]}")
@@ -70,8 +71,10 @@ async def startup_event():
     # Uruchom: docker compose exec web python app/create_admin.py
     
     if ENVIRONMENT == "production":
-        # Only run cleanup tasks in production
-        asyncio.create_task(periodic_cleanup())
+        # Only run cleanup tasks in production - use asyncio for background task
+        import asyncio
+        loop = asyncio.get_event_loop()
+        loop.create_task(periodic_cleanup())
     print(f"🚀 Portfolio API started in {ENVIRONMENT} mode")
     print("💡 Aby zainicjalizować dane i utworzyć administratora:")
     print("   docker compose exec web python app/create_admin.py")
