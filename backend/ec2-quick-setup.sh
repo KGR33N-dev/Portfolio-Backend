@@ -19,10 +19,23 @@ cd Portfolio-Backend/backend
 # Make scripts executable
 chmod +x secure-deploy.sh
 chmod +x check-production-config.sh
+chmod +x configure-nginx-security.sh
+chmod +x deploy-app-only.sh
+chmod +x install-ssl.sh
+chmod +x test-deployment.sh
 
 echo "✅ Basic setup completed!"
 echo ""
-echo "📋 Next steps:"
-echo "1. Run: ./secure-deploy.sh"
-echo "2. After reboot, run: ./secure-deploy.sh again"
-echo "3. Configure DNS and SSL"
+echo "📋 Available scripts:"
+echo "• ./secure-deploy.sh - Full deployment (if Docker not installed)"
+echo "• ./deploy-app-only.sh - Deploy app (if Docker already installed)"
+echo "• ./configure-nginx-security.sh - Configure nginx with security"
+echo "• ./install-ssl.sh - Install SSL certificates"
+echo "• ./test-deployment.sh - Test the deployment"
+echo "• ./check-production-config.sh - Diagnostic tool"
+echo ""
+echo "📋 Quick start (Docker already installed):"
+echo "1. Run: ./deploy-app-only.sh"
+echo "2. Run: ./configure-nginx-security.sh"
+echo "3. Configure DNS: api.kgr33n.com → $(curl -s ifconfig.me)"
+echo "4. Run: ./install-ssl.sh"
