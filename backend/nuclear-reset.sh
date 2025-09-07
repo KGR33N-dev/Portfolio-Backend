@@ -135,14 +135,41 @@ docker-compose -f docker-compose.prod.yml build --no-cache --force-rm
 echo "🚀 Starting fresh services..."
 docker-compose -f docker-compose.prod.yml up -d
 
-echo "⏳ Waiting for database to initialize completely (90 seconds)..."
-sleep 90
+echo "⏳ Waiting for database container to start (30 seconds)..."
+sleep 30
 
-# Wait for database with very long timeout
-echo "🔍 Waiting for database to be ready..."
-timeout 300 bash -c 'until docker-compose -f docker-compose.prod.yml exec -T db pg_isready -U postgres_user -d portfolio_prod; do 
-    echo "⏳ Still waiting for database..."
-    sleep 5
+# Wait for PostgreSQL to be ready for connections
+echo "🔍 Waiting for PostgreSQL to accept connections..."
+timeout 120 bash -c 'until docker-compose -f docker-compose.prod.yml exec -T db pg_isready -h localhost; do 
+    echo "⏳ PostgreSQL starting up..."
+    sleep 2
+done'
+
+# Immediately set the password once PostgreSQL is ready
+echo "🔑 Setting password for postgres_user immediately..."
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "
+ALTER USER postgres_user WITH PASSWORD '$DB_PASSWORD';
+GRANT ALL PRIVILEGES ON DATABASE portfolio_prod TO postgres_user;
+ALTER DATABASE portfolio_prod OWNER TO postgres_user;
+GRANT ALL ON SCHEMA public TO postgres_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres_user;
+SELECT 'Password set successfully for postgres_user' as result;
+" || echo "⚠️ Could not set password immediately, will retry..."
+
+# Quick verification that password works
+echo "🔍 Verifying password works..."
+if docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "SELECT 'Password verification successful' as status;" > /dev/null 2>&1; then
+    echo "✅ Password verification successful!"
+else
+    echo "⚠️ Password verification failed, will fix later..."
+fi
+
+# Wait for database with shorter timeout since we already set the password
+echo "🔍 Final database readiness check..."
+timeout 60 bash -c 'until docker-compose -f docker-compose.prod.yml exec -T db pg_isready -U postgres_user -d portfolio_prod; do 
+    echo "⏳ Final check..."
+    sleep 3
 done'
 
 if [ $? -ne 0 ]; then
@@ -155,7 +182,8 @@ if [ $? -ne 0 ]; then
     echo ""
     echo "🔧 Let's try to fix the database manually..."
     
-    # Manual database fix
+    # Manual database fix - force set password
+    echo "🔑 Forcing password update for postgres_user..."
     docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "
     ALTER USER postgres_user WITH PASSWORD '$DB_PASSWORD';
     GRANT ALL PRIVILEGES ON DATABASE portfolio_prod TO postgres_user;
@@ -163,12 +191,20 @@ if [ $? -ne 0 ]; then
     GRANT ALL ON SCHEMA public TO postgres_user;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres_user;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres_user;
+    SELECT 'Password updated successfully for postgres_user' as result;
+    " || true
+else
+    echo "✅ Database ready - but let's ensure password is set correctly..."
+    echo "🔑 Verifying/setting password for postgres_user..."
+    docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "
+    ALTER USER postgres_user WITH PASSWORD '$DB_PASSWORD';
+    SELECT 'Password verified/updated for postgres_user' as result;
     " || true
 fi
 
 echo "✅ Database is ready"
 
-# Test database connection
+# Test database connection directly
 echo "🔍 Testing database connection..."
 docker-compose -f docker-compose.prod.yml exec -T app python -c "
 import asyncio
