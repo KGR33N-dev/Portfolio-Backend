@@ -51,6 +51,21 @@ async def periodic_cleanup():
 @app.on_event("startup")
 async def startup_event():
     """Start background tasks when application starts"""
+    print(f"🚀 Portfolio API starting in {ENVIRONMENT} mode...")
+    
+    # Database connection verification
+    print("🔍 Verifying database connection...")
+    try:
+        from .database import engine, DATABASE_URL
+        with engine.connect() as conn:
+            result = conn.execute("SELECT current_database(), current_user, version();")
+            row = result.fetchone()
+            print(f"✅ Database connected: {row[0]} as user {row[1]}")
+            print(f"   PostgreSQL version: {row[2].split(',')[0]}")
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+        print(f"   DATABASE_URL: {DATABASE_URL.split('@')[0] if DATABASE_URL else 'NOT SET'}@****")
+    
     # Inicjalizacja danych została przeniesiona do skryptu create_admin.py
     # Uruchom: docker compose exec web python app/create_admin.py
     
