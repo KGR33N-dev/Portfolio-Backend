@@ -34,8 +34,11 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-portfolio_prod}
       - POSTGRES_USER=${POSTGRES_USER:-portfolio_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-CHANGE_DB_PASSWORD_HERE}
+      # Set the default postgres user password too
+      - POSTGRES_INITDB_ARGS=--auth-host=md5
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
+      - ./init-postgres.sh:/docker-entrypoint-initdb.d/01-init-user.sh:ro
     restart: unless-stopped
     ports:
       - "5432:5432"  # Expose for debugging if needed

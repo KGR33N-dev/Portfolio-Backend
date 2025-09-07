@@ -1,7 +1,82 @@
 #!/bin/bash
 
 # Deploy application when Docker is already installed
-# Use this if secure-deploy.sh was interrupted
+# Use this i# Check database health
+echo "🔍 Checking database..."
+timeout 120 bash -c 'until docker-compose -f docker-compose.prod.yml exec -T db pg_isready -U portfolio_user -d portfolio_prod; do 
+    echo "⏳ Waiting for database with portfolio_user..."
+    sleep 3
+done'
+
+if [ $? -eq 0 ]; then
+    echo "✅ Database is ready with correct user"
+else
+    echo "⚠️  Database not ready with portfolio_user, trying postgres fallback..."
+    timeout 60 bash -c 'until docker-compose -f docker-compose.prod.yml exec -T db pg_isready -U postgres; do sleep 2; done'
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Database is ready (using postgres user)"
+        echo "🔧 Will fix user configuration..."
+        chmod +x fix-database.sh
+        ./fix-database.sh
+    else
+        echo "❌ Database failed to start"
+        docker-compose -f docker-compose.prod.yml logs db
+        exit 1
+    fi
+fi
+
+# Check if we need to create initial migration
+MIGRATION_FILES=$(docker-compose -f docker-compose.prod.yml exec -T app find alembic/versions -name "*.py" -not -name "__init__.py" 2>/dev/null | wc -l)
+
+if [ "$MIGRATION_FILES" -eq 0 ]; then
+    echo "📝 No migrations found - creating initial migration..."
+    docker-compose -f docker-compose.prod.yml exec -T app alembic revision --autogenerate -m "Initial schema"
+    
+    if [ $? -ne 0 ]; then
+        echo "❌ Failed to create migration"
+        exit 1
+    fi
+fi
+
+# Run database migrations
+echo "📊 Running database migrations..."
+docker-compose -f docker-compose.prod.yml exec -T app alembic upgrade head
+
+if [ $? -eq 0 ]; then
+    echo "✅ Migrations completed"
+else
+    echo "❌ Migrations failed"
+    docker-compose -f docker-compose.prod.yml logs app
+    exit 1
+fi
+
+# Initialize default data
+echo "🌱 Initializing default data..."
+docker-compose -f docker-compose.prod.yml exec -T app python -c "
+import asyncio
+from app.database import init_default_languages, init_roles_and_ranks
+
+async def init_data():
+    try:
+        await init_default_languages()
+        print('✅ Default languages initialized')
+    except Exception as e:
+        print(f'ℹ️  Languages: {e}')
+    
+    try:
+        await init_roles_and_ranks()
+        print('✅ Roles and ranks initialized')
+    except Exception as e:
+        print(f'ℹ️  Roles: {e}')
+
+if __name__ == '__main__':
+    asyncio.run(init_data())
+"
+
+# Create admin user
+echo "👤 Creating admin user..."
+docker-compose -f docker-compose.prod.yml exec -T app python app/create_admin.pysh was interrupted
 
 echo "🚀 Deploying Portfolio Backend Application"
 echo "=========================================="
@@ -79,7 +154,7 @@ sleep 30
 
 # Check database health
 echo "🔍 Checking database..."
-timeout 60 bash -c 'until docker-compose -f docker-compose.prod.yml exec -T db pg_isready -U portfolio_user -d portfolio_prod; do sleep 2; done'
+timeout 60 bash -c 'until docker-compose -f docker-compose.prod.yml exec -T db pg_isready -U postgres; do sleep 2; done'
 
 if [ $? -eq 0 ]; then
     echo "✅ Database is ready"
@@ -89,21 +164,10 @@ else
     exit 1
 fi
 
-# Run database migrations
-echo "📊 Running database migrations..."
-docker-compose -f docker-compose.prod.yml exec -T app alembic upgrade head
-
-if [ $? -eq 0 ]; then
-    echo "✅ Migrations completed"
-else
-    echo "❌ Migrations failed"
-    docker-compose -f docker-compose.prod.yml logs app
-    exit 1
-fi
-
-# Create admin user
-echo "👤 Creating admin user..."
-docker-compose -f docker-compose.prod.yml exec -T app python app/create_admin.py
+# Fix database user and run migrations
+echo "� Setting up database user and running migrations..."
+chmod +x fix-database.sh
+./fix-database.sh
 
 # Check application health
 echo "🏥 Checking application health..."
