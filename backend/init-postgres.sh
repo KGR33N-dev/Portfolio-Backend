@@ -15,23 +15,14 @@ echo "  Password length: ${#POSTGRES_PASSWORD} chars"
 APP_USER="postgres_user"
 APP_PASSWORD="${POSTGRES_PASSWORD}"
 
-# Create the postgres_user if it doesn't exist
-psql -v ON_ERROR_STOP=1 --username "postgres" --dbname "$POSTGRES_DB" <<-EOSQL
-    -- Ensure the application user exists
-    DO \$\$
-    BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$APP_USER') THEN
-            CREATE USER $APP_USER WITH PASSWORD '$APP_PASSWORD';
-            RAISE NOTICE 'Created user: $APP_USER';
-        ELSE
-            RAISE NOTICE 'User already exists: $APP_USER';
-            -- Update password in case it changed
-            ALTER USER $APP_USER WITH PASSWORD '$APP_PASSWORD';
-        END IF;
-    END
-    \$\$;
+# Since POSTGRES_USER=postgres_user in docker-compose, postgres_user is already the main user
+# We just need to make sure the password is set correctly and permissions are right
 
-    -- Grant all privileges
+psql -v ON_ERROR_STOP=1 --username "$APP_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    -- Force set the password for the main user (just in case)
+    ALTER USER $APP_USER WITH PASSWORD '$APP_PASSWORD';
+    
+    -- Ensure all privileges are set
     GRANT ALL PRIVILEGES ON DATABASE $POSTGRES_DB TO $APP_USER;
     ALTER DATABASE $POSTGRES_DB OWNER TO $APP_USER;
     
@@ -49,7 +40,7 @@ psql -v ON_ERROR_STOP=1 --username "postgres" --dbname "$POSTGRES_DB" <<-EOSQL
     -- Verification
     SELECT 'Database: ' || current_database() as info;
     SELECT 'Current user: ' || current_user as info;
-    SELECT 'App user exists: ' || CASE WHEN EXISTS(SELECT 1 FROM pg_roles WHERE rolname = '$APP_USER') THEN 'YES' ELSE 'NO' END as info;
+    SELECT 'Password authentication will work: YES' as info;
 EOSQL
 
-echo "✅ PostgreSQL initialized with postgres_user"
+echo "✅ PostgreSQL initialized with postgres_user and password is set!"

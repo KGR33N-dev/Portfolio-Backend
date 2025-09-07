@@ -34,7 +34,7 @@ services:
       - .env.production
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-portfolio_prod}
-      - POSTGRES_USER=postgres
+      - POSTGRES_USER=${POSTGRES_USER:-postgres_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-CHANGE_DB_PASSWORD_HERE}
       # Set the default postgres user password too
       - POSTGRES_INITDB_ARGS=--auth-host=md5
@@ -50,7 +50,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB:-portfolio_prod}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres_user} -d ${POSTGRES_DB:-portfolio_prod}"]
       interval: 30s
       timeout: 10s
       retries: 5

@@ -15,26 +15,26 @@ docker-compose -f docker-compose.prod.yml ps
 
 # Check database initialization
 echo "🔍 Database connection test:"
-echo "  Testing with postgres superuser..."
-docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "SELECT version();" 2>/dev/null || echo "  ❌ postgres superuser connection failed"
+echo "  Testing with postgres_user (main user)..."
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "SELECT version();" 2>/dev/null || echo "  ❌ postgres_user connection failed"
 
-echo "  Testing with postgres_user..."
-docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "SELECT current_database(), current_user;" 2>/dev/null || echo "  ❌ postgres_user connection failed"
+echo "  Testing application connection..."
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "SELECT current_database(), current_user;" 2>/dev/null || echo "  ❌ application connection failed"
 
 echo "🔍 Database structure verification:"
 echo "  Available databases:"
-docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "\l" 2>/dev/null || echo "  ❌ Cannot list databases"
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "\l" 2>/dev/null || echo "  ❌ Cannot list databases"
 
 echo "  Available users:"
-docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "\du" 2>/dev/null || echo "  ❌ Cannot list users"
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "\du" 2>/dev/null || echo "  ❌ Cannot list users"
 
 # Extended verification
 echo "🔍 Extended database verification:"
 echo "  Checking portfolio_prod database exists:"
-docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "SELECT datname FROM pg_database WHERE datname='portfolio_prod';" 2>/dev/null || echo "  ❌ Query failed"
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "SELECT datname FROM pg_database WHERE datname='portfolio_prod';" 2>/dev/null || echo "  ❌ Query failed"
 
 echo "  Checking postgres_user exists:"
-docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "SELECT rolname FROM pg_roles WHERE rolname='postgres_user';" 2>/dev/null || echo "  ❌ Query failed"
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "SELECT rolname FROM pg_roles WHERE rolname='postgres_user';" 2>/dev/null || echo "  ❌ Query failed"
 
 echo "  Testing application database connection:"
 docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "SELECT 'Connection successful' as status;" 2>/dev/null || echo "  ❌ Application connection failed"
@@ -140,7 +140,7 @@ sleep 90
 
 # Wait for database with very long timeout
 echo "🔍 Waiting for database to be ready..."
-timeout 300 bash -c 'until docker-compose -f docker-compose.prod.yml exec -T db pg_isready -U portfolio_user -d portfolio_prod; do 
+timeout 300 bash -c 'until docker-compose -f docker-compose.prod.yml exec -T db pg_isready -U postgres_user -d portfolio_prod; do 
     echo "⏳ Still waiting for database..."
     sleep 5
 done'
@@ -156,13 +156,13 @@ if [ $? -ne 0 ]; then
     echo "🔧 Let's try to fix the database manually..."
     
     # Manual database fix
-    docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -d portfolio_prod -c "
-    CREATE USER portfolio_user WITH PASSWORD '$DB_PASSWORD';
-    GRANT ALL PRIVILEGES ON DATABASE portfolio_prod TO portfolio_user;
-    ALTER DATABASE portfolio_prod OWNER TO portfolio_user;
-    GRANT ALL ON SCHEMA public TO portfolio_user;
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO portfolio_user;
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO portfolio_user;
+    docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "
+    ALTER USER postgres_user WITH PASSWORD '$DB_PASSWORD';
+    GRANT ALL PRIVILEGES ON DATABASE portfolio_prod TO postgres_user;
+    ALTER DATABASE portfolio_prod OWNER TO postgres_user;
+    GRANT ALL ON SCHEMA public TO postgres_user;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres_user;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres_user;
     " || true
 fi
 
