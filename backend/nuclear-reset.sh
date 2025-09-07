@@ -1,6 +1,57 @@
 #!/bin/bash
 
-# Nuclear reset - completely removes everything and starts from absolute zero
+# Nuclear reset - completely removes everything and starts from abs# Build and start containers
+echo "🏗️  Building and starting containers..."
+echo "📊 Build logs will show PostgreSQL initialization..."
+docker-compose -f docker-compose.prod.yml up -d --build
+
+echo "⏳ Waiting for services to initialize..."
+echo "📋 Checking container status..."
+sleep 10
+
+# Verify container status
+echo "🔍 Container verification:"
+docker-compose -f docker-compose.prod.yml ps
+
+# Check database initialization
+echo "🔍 Database connection test:"
+echo "  Testing with postgres user..."
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "SELECT version();" 2>/dev/null || echo "  ❌ postgres user connection failed"
+
+echo "  Testing with portfolio_user..."
+docker-compose -f docker-compose.prod.yml exec -T db psql -U portfolio_user -d portfolio_prod -c "SELECT current_database(), current_user;" 2>/dev/null || echo "  ❌ portfolio_user connection failed"
+
+echo "🔍 Database structure verification:"
+echo "  Available databases:"
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "\l" 2>/dev/null || echo "  ❌ Cannot list databases"
+
+echo "  Available users:"
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "\du" 2>/dev/null || echo "  ❌ Cannot list users"
+
+# Extended verification
+echo "🔍 Extended database verification:"
+echo "  Checking portfolio_prod database exists:"
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "SELECT datname FROM pg_database WHERE datname='portfolio_prod';" 2>/dev/null || echo "  ❌ Query failed"
+
+echo "  Checking portfolio_user exists:"
+docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres -c "SELECT rolname FROM pg_roles WHERE rolname='portfolio_user';" 2>/dev/null || echo "  ❌ Query failed"
+
+echo "  Testing application database connection:"
+docker-compose -f docker-compose.prod.yml exec -T db psql -U portfolio_user -d portfolio_prod -c "SELECT 'Connection successful' as status;" 2>/dev/null || echo "  ❌ Application connection failed"
+
+# Application logs verification
+echo "🔍 Application startup logs:"
+echo "  Checking last 20 lines of app logs for database connection..."
+docker-compose -f docker-compose.prod.yml logs --tail=20 app 2>/dev/null || echo "  ❌ Cannot get app logs"
+
+# Final status
+echo ""
+echo "🏁 Nuclear reset completed!"
+echo "📋 Next steps:"
+echo "  1. Check if both services are healthy: docker-compose -f docker-compose.prod.yml ps"
+echo "  2. Run migrations: docker-compose -f docker-compose.prod.yml exec app alembic upgrade head"
+echo "  3. Create admin user: docker-compose -f docker-compose.prod.yml exec app python app/create_admin.py"
+echo "  4. Test API: curl http://localhost:8080/api/health"ro
 # This is the most aggressive cleanup possible
 
 echo "💥 NUCLEAR RESET - Complete database and container cleanup"
@@ -22,10 +73,21 @@ fi
 
 cd /home/ubuntu/Portfolio-Backend/backend
 
-echo "🛑 Stopping ALL Docker containers..."
+echo "🧹 Starting nuclear reset - complete Docker cleanup..."
+
+# Verification logs
+echo "📋 Environment verification:"
+echo "  - POSTGRES_DB: ${POSTGRES_DB:-'NOT SET'}"
+echo "  - POSTGRES_USER: ${POSTGRES_USER:-'NOT SET'}"
+echo "  - POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:0:10}... (${#POSTGRES_PASSWORD} chars)"
+echo "  - DATABASE_URL: ${DATABASE_URL:0:30}..."
+
+# Stop all containers
+echo "🛑 Stopping all containers..."
 docker stop $(docker ps -aq) 2>/dev/null || true
 
-echo "🗑️ Removing ALL containers..."
+# Remove all containers
+echo "🗑️  Removing all containers..."
 docker rm $(docker ps -aq) 2>/dev/null || true
 
 echo "💾 Removing ALL volumes..."
