@@ -73,11 +73,21 @@ fi
 
 cd /home/ubuntu/Portfolio-Backend/backend
 
+# Load environment variables from .env.production
+if [ -f ".env.production" ]; then
+    echo "📄 Loading environment variables from .env.production..."
+    export $(grep -v '^#' .env.production | xargs)
+else
+    echo "❌ .env.production not found!"
+    exit 1
+fi
+
 echo "🧹 Starting nuclear reset - complete Docker cleanup..."
 
 # Verification logs
 echo "📋 Environment verification:"
 echo "  - POSTGRES_DB: ${POSTGRES_DB:-'NOT SET'}"
+echo "  - POSTGRES_USER: ${POSTGRES_USER:-'NOT SET'}"  
 echo "  - App user: postgres_user"
 echo "  - POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:0:10}... (${#POSTGRES_PASSWORD} chars)"
 echo "  - DATABASE_URL: ${DATABASE_URL:0:30}..."
@@ -145,24 +155,35 @@ timeout 120 bash -c 'until docker-compose -f docker-compose.prod.yml exec -T db 
     sleep 2
 done'
 
-# Immediately set the password once PostgreSQL is ready
-echo "🔑 Setting password for postgres_user immediately..."
-docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "
-ALTER USER postgres_user WITH PASSWORD '$DB_PASSWORD';
-GRANT ALL PRIVILEGES ON DATABASE portfolio_prod TO postgres_user;
-ALTER DATABASE portfolio_prod OWNER TO postgres_user;
-GRANT ALL ON SCHEMA public TO postgres_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres_user;
-SELECT 'Password set successfully for postgres_user' as result;
-" || echo "⚠️ Could not set password immediately, will retry..."
+# PostgreSQL is ready, but we need to ensure password is set properly
+echo "🔑 Ensuring postgres_user has proper password authentication..."
 
-# Quick verification that password works
-echo "🔍 Verifying password works..."
-if docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "SELECT 'Password verification successful' as status;" > /dev/null 2>&1; then
-    echo "✅ Password verification successful!"
+# First, check if we can connect without password (trust mode)
+if docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "SELECT 'Trust mode working' as status;" > /dev/null 2>&1; then
+    echo "✅ PostgreSQL running in trust mode locally - setting password now..."
+    
+    # Set the password using trust mode connection
+    docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "
+    ALTER USER postgres_user WITH PASSWORD '$POSTGRES_PASSWORD';
+    SELECT 'Password set successfully via trust mode' as result;
+    " || echo "❌ Failed to set password via trust mode"
+    
 else
-    echo "⚠️ Password verification failed, will fix later..."
+    echo "⚠️ Trust mode not working, trying alternative methods..."
+fi
+
+# Verify password authentication works for remote connections
+echo "🔍 Testing password authentication for remote connections..."
+if PGPASSWORD="$POSTGRES_PASSWORD" docker-compose -f docker-compose.prod.yml exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db psql -h db -U postgres_user -d portfolio_prod -c "SELECT 'Password auth successful' as status;" > /dev/null 2>&1; then
+    echo "✅ Password authentication successful!"
+else
+    echo "❌ Password authentication failed - forcing password reset..."
+    
+    # Force password reset using local trust connection
+    docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "
+    ALTER USER postgres_user WITH PASSWORD '$POSTGRES_PASSWORD';
+    SELECT 'Password force-reset completed' as result;
+    " || echo "❌ Force reset failed"
 fi
 
 # Wait for database with shorter timeout since we already set the password
@@ -185,7 +206,7 @@ if [ $? -ne 0 ]; then
     # Manual database fix - force set password
     echo "🔑 Forcing password update for postgres_user..."
     docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "
-    ALTER USER postgres_user WITH PASSWORD '$DB_PASSWORD';
+    ALTER USER postgres_user WITH PASSWORD '$POSTGRES_PASSWORD';
     GRANT ALL PRIVILEGES ON DATABASE portfolio_prod TO postgres_user;
     ALTER DATABASE portfolio_prod OWNER TO postgres_user;
     GRANT ALL ON SCHEMA public TO postgres_user;
@@ -194,12 +215,7 @@ if [ $? -ne 0 ]; then
     SELECT 'Password updated successfully for postgres_user' as result;
     " || true
 else
-    echo "✅ Database ready - but let's ensure password is set correctly..."
-    echo "🔑 Verifying/setting password for postgres_user..."
-    docker-compose -f docker-compose.prod.yml exec -T db psql -U postgres_user -d portfolio_prod -c "
-    ALTER USER postgres_user WITH PASSWORD '$DB_PASSWORD';
-    SELECT 'Password verified/updated for postgres_user' as result;
-    " || true
+    echo "✅ Database ready - password authentication should be working!"
 fi
 
 echo "✅ Database is ready"
