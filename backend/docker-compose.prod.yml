@@ -7,6 +7,9 @@ services:
       - .env.production
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres_user}:${POSTGRES_PASSWORD:-CHANGE_DB_PASSWORD_HERE}@db:5432/${POSTGRES_DB:-portfolio_prod}
+      - POSTGRES_DB=${POSTGRES_DB:-portfolio_prod}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-CHANGE_DB_PASSWORD_HERE}
       - FRONTEND_URL=${FRONTEND_URL:-https://kgr33n.com}
       - PRODUCTION_FRONTEND=${PRODUCTION_FRONTEND:-https://kgr33n.com}
       - SECRET_KEY=${SECRET_KEY}
